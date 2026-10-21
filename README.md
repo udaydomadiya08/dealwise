@@ -391,5 +391,4 @@ DealWise is architected to deploy directly to [Streamlit Community Cloud](https:
 ---
 
 ## 🛡️ License & Commercial Integrity
-
-This project is built for portfolio and demonstration purposes. All figures, staffing rates, and contract models represent synthetic benchmarks. No proprietary client information or confidential pricing structures are included.
+This project is an independent portfolio and professional demonstration project. It is not an official Infosys product, endorsement, or service offering. All figures, staffing models, pricing structures, and risk assessments represent synthetic demonstration benchmarks. No proprietary client information, confidential methodologies, or non-public commercial data are contained in this application.

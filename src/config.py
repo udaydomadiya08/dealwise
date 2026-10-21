@@ -18,7 +18,8 @@ APP_VERSION = "0.7.0 (Phase 1-7 Deployment Hardened)"
 TARGET_ROLE = "Data & Analytics Value Design Practice"
 
 DISCLAIMER_TEXT = (
-    "DEMONSTRATION PLATFORM: This application is configured with hypothetical models "
+    "DEMONSTRATION PLATFORM: This application is an independent portfolio project and "
+    "is not an official Infosys product. It is configured with hypothetical models "
     "and synthetic parameters for demonstration purposes. It contains no proprietary "
     "client data and does not represent audited financial results."
 )
