@@ -86,7 +86,16 @@ Consulting proposals frequently experience margin slippage and commercial vulner
 - **Cross-Engine Mathematical Reconciliation**: Verified that commercial engine outputs, scenario comparisons, financial stress tests, and PDF/CSV deliverables strictly reconcile without variance or double-counting.
 - **Rapid Deployment Smoke Test (`tests/test_smoke.py`)**: Sub-second health check validating Python syntax, configuration schema, core Decimal calculation, and in-memory ReportLab PDF compilation.
 - **Dependency & Security Hardening**: Tested fresh-environment installation from `requirements.txt`, verified zero hardcoded secrets or developer paths, and sanitized file export names.
-- **Comprehensive Automated Test Suite**: 113 unit and integration tests executing cleanly with 100% pass rate.
+- **Comprehensive Automated Test Suite**: 119 unit and integration tests executing cleanly with 100% pass rate.
+
+### Phase 8 & Case Study Enhancement: Infosys-Aligned Enterprise Cloud & AI Transformation
+- **Verified Public Facts & Official Data Provenance**: Integrates authoritative, verifiable public disclosures from official Infosys publications (Consulting Overview, Technology Transformation, Digital Platforms, Infosys Cobalt cloud suite, Infosys Topaz generative AI suite, and Integrated Annual Report corporate operating margin benchmarks of 20.3% - 21.0%).
+- **Interactive Case Study Scenario Mode**: Toggle between the general-purpose workspace and the specialized enterprise case study preset (*"Hypothetical Enterprise Cloud & AI Transformation Proposal"*).
+- **Staffing Pyramid & Delivery Economics**: Models a realistic 36-week, 4-phase transformation engagement featuring a 13-FTE delivery pyramid (Partner, Engagement Director, Principal Cloud Architects, Lead AI Engineers, Senior FinOps Consultants, and Analysts) with transparent leverage economics.
+- **Commercial Calibration & Target Pricing**: Baseline parameters calibrated to a $1,250,000 quoted commitment, 5% commercial concession, 6.25% contingency reserve, 10% delivery labor overrun stress, and a 21.0% target margin matching corporate operating benchmarks.
+- **Pre-configured Risk Register & Diligence Readiness**: Pre-loaded with 5 enterprise cloud/AI risks and a 9-item governance checklist reflecting practical advisory due diligence.
+- **Executive Commercial Recommendation**: Provides structured contract structuring advisory (Hybrid Fixed-Fee core + Capped Time & Materials for AI workflow validation), concession ceilings, and automated FinOps consumption guardrails.
+- **Upgraded PDF & CSV Artifacts**: Executive ReportLab PDF and CSV exports automatically incorporate provider reference details, executive recommendations, and a formal Verified Public Sources Bibliography.
 
 ---
 
@@ -309,7 +318,7 @@ Run the test suite using `pytest`:
 pytest -v
 ```
 
-All 113 unit and integration tests will execute, verifying:
+All 119 unit and integration tests will execute, verifying:
 - Application configuration, metadata, and disclaimer compliance.
 - Commercial engine formulas, discounts, overruns, contingency, and target pricing.
 - Margin versus markup mathematical distinction.
@@ -330,6 +339,10 @@ All 113 unit and integration tests will execute, verifying:
 - CSV export format, headers, and numeric integrity for scenario audits, risk registers, and proposal schedules.
 - Programmatic Streamlit UI execution across all 5 modules via `streamlit.testing.v1.AppTest`.
 - Rapid deployment smoke test suite (`tests/test_smoke.py`) executing sub-second syntax and smoke health checks.
+- Official Infosys public sources provenance, verified URLs, retrieval dates, and supported strategic claims (`tests/test_case_study.py`).
+- Case study delivery pyramid structure, commercial calibration ($1.25M quoted, 21.0% margin), and risk registers.
+- Dynamic case study mode toggle and two-way session-state synchronization in Streamlit `AppTest`.
+- Case study PDF and CSV deliverable generation with embedded provider references and sources bibliography.
 
 ---
 

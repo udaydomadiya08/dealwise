@@ -91,6 +91,11 @@ class ProposalMetadata:
     payment_terms: str = "Not provided"
     notes_and_next_steps: str = "Not provided"
     is_hypothetical_demo: bool = True
+    case_study_name: Optional[str] = None
+    provider_context: Optional[str] = None
+    case_study_summary: Optional[str] = None
+    executive_recommendation: Optional[str] = None
+    sources_register: Optional[List[Dict[str, Any]]] = None
 
     def validate(self) -> List[str]:
         """Validate metadata fields and return a list of incomplete field advisories."""
@@ -549,6 +554,12 @@ def generate_proposal_pdf(content: ProposalReportContent) -> bytes:
     meta_table_data = [
         [Paragraph("Target Client:", table_cell_bold), Paragraph(_xml_escape(content.metadata.client_name), table_cell_style)],
         [Paragraph("Target Industry:", table_cell_bold), Paragraph(_xml_escape(content.metadata.industry), table_cell_style)],
+    ]
+    if content.metadata.provider_context:
+        meta_table_data.append(
+            [Paragraph("Provider Reference:", table_cell_bold), Paragraph(_xml_escape(content.metadata.provider_context), table_cell_style)]
+        )
+    meta_table_data.extend([
         [Paragraph("Prepared By:", table_cell_bold), Paragraph(_xml_escape(content.metadata.prepared_by), table_cell_style)],
         [Paragraph("Proposal Date:", table_cell_bold), Paragraph(_xml_escape(content.metadata.date_str), table_cell_style)],
         [Paragraph("Display Currency:", table_cell_bold), Paragraph(content.commercial.currency, table_cell_style)],
@@ -563,7 +574,7 @@ def generate_proposal_pdf(content: ProposalReportContent) -> bytes:
                 table_cell_bold,
             ),
         ],
-    ]
+    ])
     meta_table = Table(meta_table_data, colWidths=[150, 354])
     meta_table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), c_light_bg),
@@ -618,6 +629,26 @@ def generate_proposal_pdf(content: ProposalReportContent) -> bytes:
     story.append(Paragraph("1.0 Executive Summary & Strategic Context", h1_style))
     story.append(HRFlowable(width="100%", thickness=1, color=c_accent, spaceBefore=2, spaceAfter=10))
 
+    if content.metadata.case_study_name:
+        cs_box_text = (
+            f"<b>REAL-WORLD CASE STUDY CONTEXT:</b> This proposal models an illustrative enterprise transformation "
+            f"engagement using <b>{_xml_escape(content.metadata.provider_context or 'Infosys Consulting')}</b> as a "
+            f"real-world reference. Public company information (e.g. Cobalt cloud and Topaz generative AI capabilities, "
+            f"consulting service lines, and corporate operating margin benchmarks) is cited from official publications. "
+            f"All project budgets, pricing terms, and staffing figures are synthetic assumptions for advisory modeling."
+        )
+        cs_box = Table([[Paragraph(cs_box_text, callout_style)]], colWidths=[504])
+        cs_box.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#EFF6FF")),
+            ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#93C5FD")),
+            ("TOPPADDING", (0, 0), (-1, -1), 8),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ("LEFTPADDING", (0, 0), (-1, -1), 12),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+        ]))
+        story.append(cs_box)
+        story.append(Spacer(1, 8))
+
     exec_summary_text = (
         f"This commercial proposal outlines the analytical value proposition, delivery economics, "
         f"and commercial structuring for <b>{_xml_escape(content.metadata.client_name)}</b> within the "
@@ -631,6 +662,20 @@ def generate_proposal_pdf(content: ProposalReportContent) -> bytes:
     )
     story.append(Paragraph(exec_summary_text, body_style))
     story.append(Spacer(1, 8))
+
+    if content.metadata.executive_recommendation:
+        rec_box_text = f"<b>EXECUTIVE COMMERCIAL RECOMMENDATION:</b><br/>{_xml_escape(content.metadata.executive_recommendation).replace(chr(10), '<br/>')}"
+        rec_box = Table([[Paragraph(rec_box_text, callout_style)]], colWidths=[504])
+        rec_box.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F0FDF4")),
+            ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#86EFAC")),
+            ("TOPPADDING", (0, 0), (-1, -1), 8),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ("LEFTPADDING", (0, 0), (-1, -1), 12),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+        ]))
+        story.append(rec_box)
+        story.append(Spacer(1, 8))
 
     story.append(Paragraph("<b>1.1 Business Problem Definition</b>", h2_style))
     story.append(Paragraph(_xml_escape(content.metadata.business_problem), body_style))
@@ -971,6 +1016,37 @@ def generate_proposal_pdf(content: ProposalReportContent) -> bytes:
     story.append(Paragraph(_xml_escape(content.methodology_notes), callout_style))
     story.append(Spacer(1, 8))
 
+    if content.metadata.sources_register:
+        story.append(Paragraph("<b>Verified Company Disclosures & Official Sources</b>", h2_style))
+        src_rows = [
+            [
+                Paragraph("Topic / Pillar", table_header_style),
+                Paragraph("Official Source Title & URL", table_header_style),
+                Paragraph("Retrieved", table_header_style),
+                Paragraph("Category", table_header_style),
+            ]
+        ]
+        for src in content.metadata.sources_register:
+            title_url = f"{_xml_escape(src.get('official_source_title', ''))}<br/><font size='7' color='#2563EB'>{_xml_escape(src.get('source_url', ''))}</font>"
+            src_rows.append([
+                Paragraph(_xml_escape(src.get("topic", "")), table_cell_bold),
+                Paragraph(title_url, table_cell_style),
+                Paragraph(_xml_escape(src.get("retrieval_date", "")), table_cell_style),
+                Paragraph(_xml_escape(src.get("category", "")), table_cell_style),
+            ])
+        src_table = Table(src_rows, colWidths=[110, 244, 70, 80], repeatRows=1)
+        src_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), c_secondary),
+            ("INNERGRID", (0, 0), (-1, -1), 0.5, c_border),
+            ("BOX", (0, 0), (-1, -1), 1, c_secondary),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 5),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ]))
+        story.append(src_table)
+        story.append(Spacer(1, 8))
+
     # Build PDF with custom NumberedCanvas
     doc.build(story, canvasmaker=NumberedCanvas)
     return buffer.getvalue()
@@ -989,9 +1065,15 @@ def export_proposal_commercial_csv(content: ProposalReportContent) -> str:
     writer.writerow(["Proposal Title", content.metadata.title])
     writer.writerow(["Client Organization", content.metadata.client_name])
     writer.writerow(["Industry", content.metadata.industry])
+    if content.metadata.provider_context:
+        writer.writerow(["Provider Reference", content.metadata.provider_context])
+    if content.metadata.case_study_name:
+        writer.writerow(["Case Study Identifier", content.metadata.case_study_name])
     writer.writerow(["Prepared By", content.metadata.prepared_by])
     writer.writerow(["Date", content.metadata.date_str])
     writer.writerow(["Display Currency", content.commercial.currency])
+    if content.metadata.executive_recommendation:
+        writer.writerow(["Executive Recommendation", content.metadata.executive_recommendation.replace('\n', ' ')])
     writer.writerow(["Hypothetical Model Disclaimer", content.disclaimer_text])
     writer.writerow([])
 
@@ -1040,5 +1122,18 @@ def export_proposal_commercial_csv(content: ProposalReportContent) -> str:
             _p(scen.scenario_margin_pct),
             _p(scen.delta_margin_pp),
         ])
+
+    if content.metadata.sources_register:
+        writer.writerow([])
+        writer.writerow(["VERIFIED PUBLIC SOURCES & DATA PROVENANCE (OFFICIAL DISCLOSURES)"])
+        writer.writerow(["Topic", "Official Source Title", "Source URL", "Retrieval Date", "Category"])
+        for src in content.metadata.sources_register:
+            writer.writerow([
+                src.get("topic", ""),
+                src.get("official_source_title", ""),
+                src.get("source_url", ""),
+                src.get("retrieval_date", ""),
+                src.get("category", ""),
+            ])
 
     return output.getvalue()

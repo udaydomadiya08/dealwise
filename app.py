@@ -64,6 +64,12 @@ from src.report_engine import (
     export_proposal_commercial_csv,
     generate_report_filename,
 )
+from src.case_study import (
+    OFFICIAL_INFOSYS_SOURCES,
+    INFOSYS_CASE_STUDY_PRESET,
+    CaseStudyPreset,
+    get_case_study_preset,
+)
 
 # Page configuration
 st.set_page_config(
@@ -252,6 +258,64 @@ def init_session_state():
         st.session_state["readiness_checklist"] = get_default_readiness_checklist()
     if "custom_risks" not in st.session_state:
         st.session_state["custom_risks"] = []
+    if "case_study_active" not in st.session_state:
+        st.session_state["case_study_active"] = False
+
+
+def apply_case_study_preset(preset: CaseStudyPreset):
+    """Load case study parameters into shared session state."""
+    st.session_state["base_quoted_price"] = float(preset.inputs.base_quoted_price)
+    st.session_state["delivery_costs"] = float(preset.inputs.delivery_costs)
+    st.session_state["software_costs"] = float(preset.inputs.software_tooling_costs)
+    st.session_state["other_expenses"] = float(preset.inputs.other_expenses)
+    st.session_state["contingency_pct"] = float(preset.inputs.contingency_pct * Decimal("100"))
+    st.session_state["discount_pct"] = float(preset.inputs.discount_pct * Decimal("100"))
+    st.session_state["cost_overrun_pct"] = float(preset.inputs.cost_overrun_pct * Decimal("100"))
+    st.session_state["target_margin_pct"] = float(preset.inputs.target_margin_pct * Decimal("100"))
+    st.session_state["currency_selection"] = "USD ($)"
+
+    st.session_state["proposal_title"] = preset.title
+    st.session_state["client_name"] = preset.client_name
+    st.session_state["client_industry"] = preset.industry
+    st.session_state["prepared_by"] = preset.provider_context
+    st.session_state["business_problem"] = preset.business_problem
+    st.session_state["proposed_solution"] = preset.proposed_solution
+    st.session_state["scope_deliverables"] = preset.scope_deliverables
+    st.session_state["assumptions_exclusions"] = preset.assumptions_exclusions
+    st.session_state["proposed_timeline"] = preset.delivery_timeline
+    st.session_state["payment_terms"] = preset.payment_terms
+    st.session_state["notes_and_next_steps"] = preset.executive_recommendation
+    st.session_state["executive_recommendation"] = preset.executive_recommendation
+
+    # Update checklist
+    default_cl = get_default_readiness_checklist()
+    updated_cl = []
+    for item in default_cl:
+        is_done = preset.checklist_statuses.get(item.item_id, item.status == ChecklistStatus.COMPLETED)
+        updated_cl.append(
+            ChecklistItem(
+                item_id=item.item_id,
+                title=item.title,
+                category=item.category,
+                description=item.description,
+                status=ChecklistStatus.COMPLETED if is_done else ChecklistStatus.IN_PROGRESS,
+                notes=f"Aligned with {preset.provider_context} engagement governance.",
+            )
+        )
+    st.session_state["readiness_checklist"] = updated_cl
+    st.session_state["custom_risks"] = list(preset.risks)
+
+
+def reset_to_default_workspace():
+    """Reset session state back to general-purpose defaults."""
+    for key, val in DEFAULT_DEAL_PARAMS.items():
+        st.session_state[key] = val
+    for key, val in DEFAULT_PROPOSAL_METADATA.items():
+        st.session_state[key] = val
+    st.session_state["readiness_checklist"] = get_default_readiness_checklist()
+    st.session_state["custom_risks"] = []
+    if "executive_recommendation" in st.session_state:
+        del st.session_state["executive_recommendation"]
 
 
 def get_active_inputs() -> CommercialInputs:
@@ -306,6 +370,35 @@ def render_sidebar():
 
         st.divider()
 
+        st.caption("CASE STUDY SCENARIO MODE")
+        case_options = [
+            "Standard General Workspace",
+            "Infosys: Enterprise Cloud & AI Transformation",
+        ]
+        curr_case_idx = 1 if st.session_state.get("case_study_active", False) else 0
+        selected_case = st.selectbox(
+            "Scenario Mode",
+            options=case_options,
+            index=curr_case_idx,
+            help="Select an enterprise case study scenario calibrated against official public facts.",
+        )
+
+        if selected_case == "Infosys: Enterprise Cloud & AI Transformation":
+            if not st.session_state.get("case_study_active", False):
+                apply_case_study_preset(INFOSYS_CASE_STUDY_PRESET)
+                st.session_state["case_study_active"] = True
+                st.rerun()
+            if st.button("🔄 Reload Case Study Preset", use_container_width=True):
+                apply_case_study_preset(INFOSYS_CASE_STUDY_PRESET)
+                st.rerun()
+        else:
+            if st.session_state.get("case_study_active", False):
+                reset_to_default_workspace()
+                st.session_state["case_study_active"] = False
+                st.rerun()
+
+        st.divider()
+
         st.caption("ACTIVE DEAL CONTROLS")
         curr_options = ["USD ($)", "INR (₹)"]
         curr_index = curr_options.index(st.session_state.get("currency_selection", "USD ($)"))
@@ -325,7 +418,7 @@ def render_sidebar():
                 <div><strong>Build:</strong> <code>{APP_VERSION}</code></div>
                 <div><strong>Simulator:</strong> Phase 4 Active</div>
                 <div><strong>Engine:</strong> Python Decimal (Exact)</div>
-                <div><strong>Data Mode:</strong> Synthetic Only</div>
+                <div><strong>Case Study:</strong> {'Active (Infosys)' if st.session_state.get('case_study_active') else 'Standard'}</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -343,6 +436,92 @@ def render_sidebar():
         )
 
     return selected_section
+
+
+def render_case_study_banner():
+    """Render interactive Infosys real-world case study briefing panel."""
+    st.markdown(
+        """
+        <div style="background: linear-gradient(135deg, #0F2D59 0%, #1E3A8A 100%); color: white; padding: 16px 20px; border-radius: 8px; margin-bottom: 14px; border-left: 6px solid #38BDF8;">
+            <div style="font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; justify-content: space-between;">
+                <span>🏢 Case Study Active: Infosys-Aligned Enterprise Cloud & AI Transformation</span>
+                <span style="font-size: 0.72rem; background: #0284C7; padding: 3px 8px; border-radius: 9999px; font-weight: 600;">OFFICIAL PUBLIC FACTS</span>
+            </div>
+            <div style="font-size: 0.85rem; color: #E0F2FE; margin-top: 6px; line-height: 1.5;">
+                Illustrative 36-week enterprise transformation proposal for <strong>Global OmniRetail Enterprises</strong>. Calibrated against Infosys Consulting's Technology Transformation offerings, Cobalt cloud suite, Topaz generative AI frameworks, and official FY corporate operating margin benchmarks (20.3% reported / 21.0% adjusted).
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    with st.expander("🔍 Inspect Case Study Evidence, Delivery Pyramid & Verified Public Sources", expanded=False):
+        cs_tab1, cs_tab2, cs_tab3, cs_tab4 = st.tabs([
+            "🏛️ Verified Public Facts",
+            "👥 Engagement Scope & Staffing",
+            "📋 Assumptions vs Facts Register",
+            "🛡️ Independent Project Disclaimer",
+        ])
+        with cs_tab1:
+            st.markdown("##### Official Public Information from Authoritative Sources")
+            st.caption("All facts below are verified against official Infosys publications. Retrieval Date: October 2026.")
+            fact_rows = []
+            for s in OFFICIAL_INFOSYS_SOURCES:
+                fact_rows.append({
+                    "Category": s.category,
+                    "Topic / Capability": s.topic,
+                    "Key Verified Fact": s.fact_summary,
+                    "Official Source": s.official_source_title,
+                    "Source URL": s.source_url,
+                })
+            st.dataframe(pd.DataFrame(fact_rows), use_container_width=True, hide_index=True)
+            st.markdown("###### Official Source Citations:")
+            for s in OFFICIAL_INFOSYS_SOURCES:
+                st.markdown(f"- **{s.topic}**: [{s.official_source_title}]({s.source_url}) *(Category: {s.category})*")
+
+        with cs_tab2:
+            st.markdown("##### Illustrative Engagement Scoping & Delivery Leverage")
+            st.markdown(f"**Client**: {INFOSYS_CASE_STUDY_PRESET.client_name} | **Industry**: {INFOSYS_CASE_STUDY_PRESET.industry}")
+            st.markdown(f"**Duration**: {INFOSYS_CASE_STUDY_PRESET.duration_weeks} Weeks (4 Delivery Phases) | **Commercial Model**: {INFOSYS_CASE_STUDY_PRESET.engagement_type}")
+            st.markdown(f"**Target Practice Margin**: {float(INFOSYS_CASE_STUDY_PRESET.inputs.target_margin_pct * Decimal('100')):.1f}% *(Calibrated against Infosys Integrated Annual Report operating margin benchmark of 20.3% - 21.0%)*")
+
+            st.markdown("###### Delivery Team Staffing Pyramid:")
+            pyramid_rows = [
+                {
+                    "Role Title": r.role_title,
+                    "FTE": r.count_fte,
+                    "Experience": r.experience_level,
+                    "Phase Allocation": r.delivery_phase,
+                    "Key Responsibilities": r.responsibilities,
+                }
+                for r in INFOSYS_CASE_STUDY_PRESET.staffing_pyramid
+            ]
+            st.dataframe(pd.DataFrame(pyramid_rows), use_container_width=True, hide_index=True)
+
+        with cs_tab3:
+            st.markdown("##### Data Provenance & Assumptions Register")
+            st.caption("Strict separation between verified public disclosures, user-configurable assumptions, calculated outputs, and model recommendations.")
+            provenance_rows = [
+                {"Type": "Verified Public Fact", "Item": "Consulting Service Pillars", "Description": "Strategic Technology Services, FinOps, Cloud Advisory, Digital Platforms (SAP, Salesforce, ServiceNow)", "Source": "Infosys Consulting Official Offerings"},
+                {"Type": "Verified Public Fact", "Item": "Technology Suites", "Description": "Infosys Cobalt (Cloud) & Infosys Topaz (Generative AI & Autonomous Agents)", "Source": "Infosys Official Platform Portals"},
+                {"Type": "Verified Public Fact", "Item": "Corporate Operating Margin", "Description": "20.3% reported / 21.0% adjusted operating margin benchmark", "Source": "Infosys Integrated Annual Report"},
+                {"Type": "Hypothetical Assumption", "Item": "Quoted Fee ($1,250,000)", "Description": "Illustrative contract value for 36-week enterprise engagement", "Source": "Synthetic Case Study Parameter"},
+                {"Type": "Hypothetical Assumption", "Item": "Delivery Costs ($780,000 labor + $85,000 tools)", "Description": "Synthetically constructed staffing pyramid economics", "Source": "Synthetic Case Study Parameter"},
+                {"Type": "Hypothetical Assumption", "Item": "Target Margin (21.0%)", "Description": "Practice pricing target calibrated to corporate operating margin profile", "Source": "Calibrated Practice Benchmark"},
+                {"Type": "Calculated Output", "Item": "Operating Profit & Margin", "Description": "Exact Python Decimal formula: Net Revenue - Scenario Total Cost", "Source": "DealWise Commercial Engine"},
+                {"Type": "Calculated Output", "Item": "Break-Even Quoting Price", "Description": "Closed-form required quote: Direct Cost / (1 - Target Margin)", "Source": "DealWise Commercial Engine"},
+                {"Type": "Model Recommendation", "Item": "Contract Structure", "Description": "Fixed-fee for deterministic cloud migration + Capped T&M for AI workflows", "Source": "DealWise Commercial Governance Advisory"},
+            ]
+            st.dataframe(pd.DataFrame(provenance_rows), use_container_width=True, hide_index=True)
+
+        with cs_tab4:
+            st.markdown("##### Portfolio Integrity & Professional Independence Notice")
+            st.warning(
+                "**DISCLAIMER**: DealWise is an independent software portfolio project authored by Uday Domadiya. "
+                "It is not an official product, service offering, endorsement, or representation of Infosys. "
+                "All company references are derived exclusively from publicly available official disclosures. "
+                "All project pricing, labor rates, staffing costs, and contract terms are synthetic assumptions "
+                "created solely to demonstrate enterprise commercial modeling and advisory capabilities."
+            )
 
 
 def render_header(section):
@@ -365,6 +544,9 @@ def render_header(section):
         """,
         unsafe_allow_html=True,
     )
+
+    if st.session_state.get("case_study_active", False):
+        render_case_study_banner()
 
 
 def render_overview_page():
@@ -1721,6 +1903,18 @@ def render_proposal_reports_page():
         )
         st.session_state["notes_and_next_steps"] = steps_val
 
+    cs_active = st.session_state.get("case_study_active", False)
+    sources_dict = [
+        {
+            "topic": s.topic,
+            "official_source_title": s.official_source_title,
+            "source_url": s.source_url,
+            "retrieval_date": s.retrieval_date,
+            "category": s.category,
+        }
+        for s in OFFICIAL_INFOSYS_SOURCES
+    ] if cs_active else None
+
     # Construct ProposalMetadata
     metadata = ProposalMetadata(
         title=st.session_state.get("proposal_title", "Commercial Proposal"),
@@ -1735,6 +1929,11 @@ def render_proposal_reports_page():
         payment_terms=st.session_state.get("payment_terms", "Not provided"),
         notes_and_next_steps=st.session_state.get("notes_and_next_steps", "Not provided"),
         is_hypothetical_demo=st.session_state.get("is_hypothetical_demo", True),
+        case_study_name="Infosys: Enterprise Cloud & AI Transformation" if cs_active else None,
+        provider_context="Infosys Consulting (Technology Transformation Practice)" if cs_active else None,
+        case_study_summary=INFOSYS_CASE_STUDY_PRESET.executive_summary if cs_active else None,
+        executive_recommendation=st.session_state.get("executive_recommendation") or (INFOSYS_CASE_STUDY_PRESET.executive_recommendation if cs_active else None),
+        sources_register=sources_dict,
     )
 
     # Incompleteness validation
@@ -1879,14 +2078,28 @@ def render_proposal_reports_page():
     with tab_narrative:
         st.markdown(f"### {html.escape(metadata.title)}")
         st.markdown(f"**Target Client**: {metadata.client_name} | **Industry**: {metadata.industry}")
+        if metadata.provider_context:
+            st.markdown(f"**Provider Reference**: {metadata.provider_context}")
         st.markdown(f"**Prepared By**: {metadata.prepared_by} | **Date**: {metadata.date_str}")
         st.markdown("---")
+        if metadata.case_study_name:
+            st.info(
+                f"**🏢 Real-World Case Study Mode Active**: This proposal models an illustrative enterprise transformation "
+                f"for **{metadata.client_name}** referencing **{metadata.provider_context}** capabilities (Cobalt & Topaz). "
+                f"All financial figures are synthetic demonstration benchmarks."
+            )
+        if metadata.executive_recommendation:
+            st.success(f"**Executive Commercial Recommendation**:\n\n{metadata.executive_recommendation}")
         st.markdown(f"**Business Problem Definition**:\n\n{metadata.business_problem}")
         st.markdown(f"**Proposed Value Design & Solution**:\n\n{metadata.proposed_solution}")
         st.markdown(f"**Core Delivery Scope & Milestones**:\n\n{metadata.scope_deliverables}")
         st.markdown(f"**Delivery Assumptions & Exclusions**:\n\n{metadata.assumptions_exclusions}")
         st.markdown(f"**Timeline**: {metadata.timeline} | **Payment Terms**: {metadata.payment_terms}")
         st.markdown(f"**Commercial Next Steps**:\n\n{metadata.notes_and_next_steps}")
+        if metadata.sources_register:
+            with st.expander("📚 Verified Public Sources Bibliography", expanded=False):
+                for s in metadata.sources_register:
+                    st.markdown(f"- **{s.get('topic')}**: [{s.get('official_source_title')}]({s.get('source_url')}) *(Category: {s.get('category')}, Retrieved: {s.get('retrieval_date')})*")
         st.caption(f"🛡️ {report_content.disclaimer_text}")
 
     st.markdown("---")

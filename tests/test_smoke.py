@@ -28,6 +28,7 @@ def test_smoke_syntax_check():
     py_compile.compile("src/scenario_engine.py", doraise=True)
     py_compile.compile("src/risk_engine.py", doraise=True)
     py_compile.compile("src/report_engine.py", doraise=True)
+    py_compile.compile("src/case_study.py", doraise=True)
 
 
 def test_smoke_config_integrity():
