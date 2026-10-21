@@ -1,0 +1,39 @@
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python byte-code and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Pytest and testing artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Streamlit secrets and local runtime data
+.streamlit/secrets.toml
+
+# Environment variables & local secrets
+.env
+.env.local
+*.env
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Temporary logs
+*.log
