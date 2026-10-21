@@ -14,7 +14,7 @@ class NavSection(NamedTuple):
 
 APP_TITLE = "DealWise"
 APP_SUBTITLE = "Consulting Proposal & Commercial Intelligence Platform"
-APP_VERSION = "0.3.0 (Phase 1, 2 & 3)"
+APP_VERSION = "0.4.0 (Phase 1, 2, 3 & 4)"
 TARGET_ROLE = "Data & Analytics Value Design Practice"
 
 DISCLAIMER_TEXT = (
@@ -44,9 +44,9 @@ PAGES: List[NavSection] = [
         key="scenario_simulator",
         label="Scenario Simulator",
         icon="🎛️",
-        phase=2,
-        is_active=False,
-        summary="Contract structure trade-offs (Time & Materials, Fixed Fee, Value-Linked Milestones) and rate sensitivities.",
+        phase=4,
+        is_active=True,
+        summary="What-if scenario comparison, sensitivity analysis matrices, contract model trade-offs (Fixed Fee vs. T&M), and CSV export.",
     ),
     NavSection(
         key="risk_review",

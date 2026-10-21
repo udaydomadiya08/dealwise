@@ -373,3 +373,95 @@ def build_profitability_benchmark_chart(
         showlegend=False,
     )
     return fig
+
+
+def build_sensitivity_heatmap(
+    grid: List[List[Any]],
+    currency: str = "USD",
+    metric: str = "margin",
+) -> go.Figure:
+    """Build an annotated 2D heatmap matrix across discount and delivery overrun variations."""
+    if not grid or not grid[0]:
+        return go.Figure()
+
+    # Extract axes
+    x_discounts = [f"{cell.discount_pct * Decimal('100'):.1f}%" for cell in grid[0]]
+    y_overruns = [f"{row[0].cost_overrun_pct * Decimal('100'):.1f}%" for row in grid]
+
+    z_values: List[List[Optional[float]]] = []
+    text_matrix: List[List[str]] = []
+    hover_matrix: List[List[str]] = []
+
+    for row in grid:
+        z_row: List[Optional[float]] = []
+        text_row: List[str] = []
+        hover_row: List[str] = []
+        for cell in row:
+            if metric == "margin":
+                val = float(cell.profit_margin_pct) if cell.profit_margin_pct is not None else None
+                display_str = format_percentage(cell.profit_margin_pct)
+            else:
+                val = float(cell.profit)
+                display_str = format_currency(cell.profit, currency)
+
+            z_row.append(val if val is not None else 0.0)
+            text_row.append(display_str)
+            hover_row.append(
+                f"Discount: {format_percentage(cell.discount_pct * Decimal('100'))}<br>"
+                f"Labor Overrun: {format_percentage(cell.cost_overrun_pct * Decimal('100'))}<br>"
+                f"Operating Profit: {format_currency(cell.profit, currency)}<br>"
+                f"Profit Margin: {format_percentage(cell.profit_margin_pct)}<br>"
+                f"Net Revenue: {format_currency(cell.net_revenue, currency)}"
+            )
+        z_values.append(z_row)
+        text_matrix.append(text_row)
+        hover_matrix.append(hover_row)
+
+    colorscale = [
+        [0.0, "#991B1B"],   # Dark red for heavy loss
+        [0.25, "#EF4444"],  # Red for loss
+        [0.45, "#F59E0B"],  # Amber for low margin
+        [0.70, "#10B981"],  # Green for healthy margin
+        [1.0, "#065F46"],   # Deep green for high margin
+    ]
+
+    metric_title = "Profit Margin (%)" if metric == "margin" else f"Operating Profit ({currency})"
+
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=z_values,
+            x=x_discounts,
+            y=y_overruns,
+            text=text_matrix,
+            texttemplate="%{text}",
+            textfont={"size": 11, "color": "#FFFFFF"},
+            hovertext=hover_matrix,
+            hoverinfo="text",
+            colorscale=colorscale,
+            colorbar=dict(title=metric_title, tickfont=dict(size=10, color="#475569")),
+        )
+    )
+
+    fig.update_layout(
+        title={
+            "text": f"Sensitivity Matrix: {metric_title} under Cost Overrun vs. Client Discount",
+            "font": {"size": 14, "color": "#1E293B"},
+        },
+        height=380,
+        margin=dict(l=40, r=20, t=50, b=40),
+        xaxis=dict(
+            title="Client Discount (%)",
+            tickfont=dict(size=11, color="#334155"),
+            showgrid=False,
+        ),
+        yaxis=dict(
+            title="Delivery Labor Cost Overrun (%)",
+            tickfont=dict(size=11, color="#334155"),
+            showgrid=False,
+            autorange="reversed",
+        ),
+        plot_bgcolor="#FFFFFF",
+        paper_bgcolor="#FFFFFF",
+    )
+    return fig
+

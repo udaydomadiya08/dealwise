@@ -49,14 +49,14 @@ def test_navigation_section_schema():
         assert section.key.isidentifier()
         assert len(section.label.strip()) > 0
         assert len(section.icon.strip()) > 0
-        assert section.phase in (1, 2, 3)
+        assert section.phase in (1, 2, 3, 4)
         assert isinstance(section.is_active, bool)
         assert len(section.summary.strip()) > 0
 
-    # In Phase 2, overview and commercial_analysis are marked active
+    # In Phase 4, overview, commercial_analysis, and scenario_simulator are active
     active_pages = [p.key for p in PAGES if p.is_active]
-    assert active_pages == ["overview", "commercial_analysis"], (
-        f"Expected overview and commercial_analysis active in Phase 2, found: {active_pages}"
+    assert active_pages == ["overview", "commercial_analysis", "scenario_simulator"], (
+        f"Expected overview, commercial_analysis, and scenario_simulator active in Phase 4, found: {active_pages}"
     )
 
 

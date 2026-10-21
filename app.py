@@ -1,6 +1,6 @@
 """DealWise - Consulting Proposal & Commercial Intelligence Platform.
 
-Phases 1, 2 & 3: Project Foundation, Commercial Calculation Engine & Executive Analytics Dashboard.
+Phases 1-4: Project Foundation, Commercial Engine, Executive Dashboard & Scenario Simulator.
 """
 
 from decimal import Decimal
@@ -28,7 +28,17 @@ from src.dashboard import (
     build_revenue_vs_cost_chart,
     build_cost_composition_chart,
     build_profitability_benchmark_chart,
+    build_sensitivity_heatmap,
     get_cost_composition,
+)
+from src.scenario_engine import (
+    ScenarioComparison,
+    SensitivityCell,
+    compare_scenarios,
+    generate_sensitivity_grid,
+    evaluate_fixed_fee_model,
+    evaluate_time_and_materials_model,
+    export_scenario_to_csv,
 )
 
 # Page configuration
@@ -192,7 +202,7 @@ DEFAULT_DEAL_PARAMS = {
 
 
 def init_session_state():
-    """Initialize shared commercial parameters across Overview and Analysis pages."""
+    """Initialize shared commercial parameters across pages."""
     for key, val in DEFAULT_DEAL_PARAMS.items():
         if key not in st.session_state:
             st.session_state[key] = val
@@ -267,7 +277,7 @@ def render_sidebar():
             f"""
             <div style="font-size: 0.82rem; color: #475569; line-height: 1.6;">
                 <div><strong>Build:</strong> <code>{APP_VERSION}</code></div>
-                <div><strong>Dashboard:</strong> Phase 3 Active</div>
+                <div><strong>Simulator:</strong> Phase 4 Active</div>
                 <div><strong>Engine:</strong> Python Decimal (Exact)</div>
                 <div><strong>Data Mode:</strong> Synthetic Only</div>
             </div>
@@ -280,7 +290,7 @@ def render_sidebar():
         st.markdown(
             """
             <div style="font-size: 0.78rem; color: #64748B; line-height: 1.45;">
-                Engineered to demonstrate practical commercial architecture, pricing governance, and executive analytics for advisory engagements.
+                Engineered to demonstrate practical commercial architecture, pricing governance, what-if sensitivity modeling, and executive analytics for advisory engagements.
             </div>
             """,
             unsafe_allow_html=True,
@@ -295,7 +305,7 @@ def render_header(section):
         f"""
         <div class="dw-header-card">
             <h1>{APP_TITLE} — {APP_SUBTITLE}</h1>
-            <p>Commercial Structuring • Deal Governance • Executive Proposal Analytics</p>
+            <p>Commercial Structuring • Deal Governance • What-If Scenario Intelligence</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -323,7 +333,6 @@ def render_overview_page():
 
     currency = get_active_currency()
 
-    # Calculate current commercial results
     try:
         inputs = get_active_inputs()
         res = calculate_commercials(inputs)
@@ -476,14 +485,13 @@ def render_overview_page():
             fig_comp = build_cost_composition_chart(inputs, res, currency)
             st.plotly_chart(fig_comp, use_container_width=True)
 
-        # Benchmark Chart
         fig_bench = build_profitability_benchmark_chart(res, inputs.target_margin_pct)
         st.plotly_chart(fig_bench, use_container_width=True)
 
         st.caption(
             "Visualizations are generated directly from the underlying Decimal commercial engine. "
             "To model alternate fee structures, discounts, or delivery cost stress-tests, switch to the "
-            "**Commercial Analysis** module in the sidebar."
+            "**Scenario Simulator** or **Commercial Analysis** module in the sidebar."
         )
 
     st.divider()
@@ -557,18 +565,16 @@ def render_commercial_analysis_page():
 
     currency = get_active_currency()
 
-    # Notification banner
     st.markdown(
         f"""
         <div style="background-color: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #475569; margin-bottom: 14px;">
             <strong>Hypothetical Demonstration Baseline:</strong> Parameters are synchronized with the Executive Dashboard. 
-            Modifying any input updates both views immediately. Display Currency: <strong>{currency}</strong>.
+            Modifying any input updates all platform views immediately. Display Currency: <strong>{currency}</strong>.
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # Inputs Layout (2 columns: Commercial Pricing vs Delivery Costs)
     in_col1, in_col2 = st.columns(2)
 
     with in_col1:
@@ -645,7 +651,6 @@ def render_commercial_analysis_page():
             help="Simulates percentage increase in labor/subcontractor costs due to scope or timeline elongation.",
         )
 
-    # Calculation execution with robust error handling
     try:
         inputs = get_active_inputs()
         res = calculate_commercials(inputs)
@@ -657,7 +662,6 @@ def render_commercial_analysis_page():
     if valid:
         st.markdown("---")
 
-        # Commercial Health Warnings & Alerts
         if res.profit < Decimal("0"):
             st.error(
                 f"🚨 **CRITICAL COMMERCIAL RISK — NET OPERATING LOSS**: "
@@ -680,7 +684,6 @@ def render_commercial_analysis_page():
                 f"(Buffer: +{format_percentage(res.margin_gap_pct)})."
             )
 
-        # Primary Executive KPIs
         st.markdown("#### Deal Commercial Performance Indicators")
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
@@ -734,7 +737,6 @@ def render_commercial_analysis_page():
                 unsafe_allow_html=True,
             )
 
-        # Secondary Advisory KPIs
         skpi1, skpi2, skpi3, skpi4 = st.columns(4)
 
         with skpi1:
@@ -785,7 +787,6 @@ def render_commercial_analysis_page():
                 unsafe_allow_html=True,
             )
 
-        # Cost Component Breakdown & Structure
         st.markdown("#### Cost Architecture & Breakdown")
         cost_col, summary_col = st.columns([3, 2])
 
@@ -828,30 +829,428 @@ def render_commercial_analysis_page():
             fig_comp = build_cost_composition_chart(inputs, res, currency)
             st.plotly_chart(fig_comp, use_container_width=True)
 
-        # Transparent Formula Reference
-        with st.expander("📐 Transparent Financial Engineering Reference (Formulas & Definitions)", expanded=False):
+
+def render_scenario_simulator_page():
+    """Render Phase 4 What-If Scenario Simulator, Sensitivity Grid, and Contract Models."""
+    st.subheader("🎛️ What-If Commercial Scenario Simulator")
+    st.markdown(
+        """
+        Evaluate proposed client concessions, labor delivery stress-tests, sensitivity surfaces, 
+        and commercial contract structures side-by-side with your saved baseline.
+        """
+    )
+
+    currency = get_active_currency()
+    baseline_inputs = get_active_inputs()
+
+    # Preset selection bar
+    st.markdown("##### 1. Define What-If Scenario")
+    preset_col, info_col = st.columns([1, 2])
+
+    with preset_col:
+        preset_name = st.selectbox(
+            "Scenario Preset",
+            options=[
+                "Custom Scenario",
+                "Aggressive Negotiation (15% Client Discount)",
+                "Delivery Labor Overrun (+20% Scope Creep)",
+                "Compound Downside (15% Discount + 25% Overrun)",
+                "Optimized Execution (0% Overrun & 0% Discount)",
+            ],
+            index=0,
+            help="Choose a pre-configured commercial situation or adjust parameters manually.",
+        )
+
+    # Preset default overrides for scenario inputs
+    def_price = float(baseline_inputs.base_quoted_price)
+    def_disc = float(baseline_inputs.discount_pct * Decimal("100"))
+    def_overrun = float(baseline_inputs.cost_overrun_pct * Decimal("100"))
+    def_cont = float(baseline_inputs.contingency_pct * Decimal("100"))
+
+    if preset_name == "Aggressive Negotiation (15% Client Discount)":
+        def_disc = 15.0
+    elif preset_name == "Delivery Labor Overrun (+20% Scope Creep)":
+        def_overrun = 20.0
+    elif preset_name == "Compound Downside (15% Discount + 25% Overrun)":
+        def_disc = 15.0
+        def_overrun = 25.0
+    elif preset_name == "Optimized Execution (0% Overrun & 0% Discount)":
+        def_disc = 0.0
+        def_overrun = 0.0
+
+    with info_col:
+        st.markdown(
+            f"""
+            <div style="background-color: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px 16px; margin-top: 12px; font-size: 0.83rem; color: #334155;">
+                <strong>Baseline Protected:</strong> The saved deal baseline (Quoted: {format_currency(baseline_inputs.base_quoted_price, currency)}, 
+                Discount: {format_percentage(baseline_inputs.discount_pct * Decimal('100'))}, Delivery: {format_currency(baseline_inputs.delivery_costs, currency)}) 
+                remains unmutated while running what-if simulations.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # Scenario Controls Layout
+    s_col1, s_col2, s_col3, s_col4 = st.columns(4)
+
+    with s_col1:
+        scen_price = st.number_input(
+            "Scenario Quoted Price",
+            min_value=0.0,
+            max_value=100000000.0,
+            value=def_price,
+            step=5000.0,
+            help="Simulated gross catalog fee.",
+        )
+
+    with s_col2:
+        scen_discount = st.number_input(
+            "Scenario Client Discount (%)",
+            min_value=0.0,
+            max_value=100.0,
+            value=def_disc,
+            step=1.0,
+            help="Simulated negotiated discount concession.",
+        )
+
+    with s_col3:
+        scen_overrun = st.number_input(
+            "Scenario Labor Overrun (%)",
+            min_value=0.0,
+            max_value=300.0,
+            value=def_overrun,
+            step=5.0,
+            help="Simulated labor cost overrun on delivery personnel.",
+        )
+
+    with s_col4:
+        scen_contingency = st.number_input(
+            "Scenario Contingency (%)",
+            min_value=0.0,
+            max_value=100.0,
+            value=def_cont,
+            step=1.0,
+            help="Simulated contingency reserve rate.",
+        )
+
+    # Build and validate scenario inputs
+    try:
+        scenario_inputs = CommercialInputs.from_percentages(
+            base_quoted_price=scen_price,
+            delivery_costs=baseline_inputs.delivery_costs,
+            software_tooling_costs=baseline_inputs.software_tooling_costs,
+            other_expenses=baseline_inputs.other_expenses,
+            contingency_pct=scen_contingency,
+            discount_pct=scen_discount,
+            cost_overrun_pct=scen_overrun,
+            target_margin_pct=baseline_inputs.target_margin_pct * Decimal("100"),
+        )
+        comparison = compare_scenarios(baseline_inputs, scenario_inputs)
+        valid_scenario = True
+    except CommercialValidationError as exc:
+        st.error(f"⚠️ Scenario Input Error: {exc}")
+        valid_scenario = False
+
+    if valid_scenario:
+        st.markdown("---")
+        st.markdown("##### 2. Baseline vs. Scenario Comparative Delta")
+
+        # 4 Delta KPI Cards
+        d1, d2, d3, d4 = st.columns(4)
+
+        with d1:
+            delta_rev = comparison.delta_net_revenue
+            rev_color = "dw-card-value-positive" if delta_rev >= 0 else "dw-card-value-negative"
+            rev_sign = "+" if delta_rev >= 0 else ""
             st.markdown(
-                """
-                The DealWise calculation engine applies exact advisory deal economics:
-
-                1. **Direct estimated cost** = $\\text{Delivery Costs} + \\text{Software/Tooling Costs} + \\text{Other Expenses}$
-                2. **Contingency amount** = $\\text{Direct Estimated Cost} \\times \\text{Contingency \\%}$
-                3. **Baseline total estimated cost** = $\\text{Direct Estimated Cost} + \\text{Contingency Amount}$
-                4. **Scenario delivery cost** = $\\text{Delivery Costs} \\times (1 + \\text{Cost Overrun \\%})$
-                5. **Scenario total estimated cost** = $\\text{Scenario Delivery Cost} + \\text{Software Costs} + \\text{Other Expenses} + \\text{Contingency Amount}$
-                6. **Net revenue** = $\\text{Base Quoted Price} \\times (1 - \\text{Discount \\%})$
-                7. **Profit** = $\\text{Net Revenue} - \\text{Scenario Total Estimated Cost}$
-                8. **Profit margin (\\%)** = $\\frac{\\text{Profit}}{\\text{Net Revenue}} \\times 100$ *(when Net Revenue > 0)*
-                9. **Markup (\\%)** = $\\frac{\\text{Profit}}{\\text{Scenario Total Estimated Cost}} \\times 100$ *(when Total Cost > 0)*
-                10. **Break-even net revenue** = $\\text{Scenario Total Estimated Cost}$
-                11. **Required net price for target margin** = $\\frac{\\text{Scenario Total Estimated Cost}}{1 - \\text{Target Margin \\%}}$ *(where Target Margin < 100\\%)*
-                12. **Required quoted price before discount** = $\\frac{\\text{Required Net Price}}{1 - \\text{Discount \\%}}$ *(where Discount < 100\\%)*
-
-                **Margin vs. Markup Distinction**:
-                - **Profit Margin** uses **Revenue** as denominator: indicates the share of client fees retained as profit.
-                - **Markup** uses **Cost** as denominator: indicates the percentage added on top of delivery costs.
-                """
+                f"""
+                <div class="dw-card">
+                    <div class="dw-card-title">Net Revenue Impact</div>
+                    <div class="dw-card-value {rev_color}">{rev_sign}{format_currency(delta_rev, currency)}</div>
+                    <div class="dw-card-subtext">Scenario: {format_currency(comparison.scenario_result.net_revenue, currency)} vs Base: {format_currency(comparison.baseline_result.net_revenue, currency)}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
+
+        with d2:
+            delta_cost = comparison.delta_total_cost
+            cost_color = "dw-card-value-negative" if delta_cost > 0 else ("dw-card-value-positive" if delta_cost < 0 else "")
+            cost_sign = "+" if delta_cost >= 0 else ""
+            st.markdown(
+                f"""
+                <div class="dw-card">
+                    <div class="dw-card-title">Total Cost Impact</div>
+                    <div class="dw-card-value {cost_color}">{cost_sign}{format_currency(delta_cost, currency)}</div>
+                    <div class="dw-card-subtext">Scenario: {format_currency(comparison.scenario_result.scenario_total_cost, currency)} vs Base: {format_currency(comparison.baseline_result.scenario_total_cost, currency)}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with d3:
+            delta_prof = comparison.delta_profit
+            prof_color = "dw-card-value-positive" if delta_prof >= 0 else "dw-card-value-negative"
+            prof_sign = "+" if delta_prof >= 0 else ""
+            st.markdown(
+                f"""
+                <div class="dw-card">
+                    <div class="dw-card-title">Profit Impact</div>
+                    <div class="dw-card-value {prof_color}">{prof_sign}{format_currency(delta_prof, currency)}</div>
+                    <div class="dw-card-subtext">Scenario: {format_currency(comparison.scenario_result.profit, currency)} vs Base: {format_currency(comparison.baseline_result.profit, currency)}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with d4:
+            delta_m = comparison.delta_margin_percentage_points
+            margin_color = "dw-card-value-positive" if (delta_m or 0) >= 0 else "dw-card-value-negative"
+            margin_sign = "+" if (delta_m or 0) >= 0 else ""
+            delta_m_str = f"{margin_sign}{delta_m:.2f} pp" if delta_m is not None else "N/A"
+            scen_m_str = format_percentage(comparison.scenario_result.profit_margin_pct)
+            base_m_str = format_percentage(comparison.baseline_result.profit_margin_pct)
+            st.markdown(
+                f"""
+                <div class="dw-card">
+                    <div class="dw-card-title">Margin Variance (pp)</div>
+                    <div class="dw-card-value {margin_color}">{delta_m_str}</div>
+                    <div class="dw-card-subtext">Scenario: {scen_m_str} vs Base: {base_m_str}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        # Tabular Side-by-Side Comparison
+        comp_table_data = {
+            "Metric": [
+                "Net Realized Revenue",
+                "Direct Estimated Cost",
+                "Contingency Reserve Amount",
+                "Scenario Total Estimated Cost",
+                "Projected Operating Profit / Loss",
+                "Profit Margin (%)",
+                "Markup on Cost (%)",
+                "Target Practice Margin (%)",
+                "Target Margin Achieved?",
+            ],
+            "Saved Baseline": [
+                format_currency(comparison.baseline_result.net_revenue, currency),
+                format_currency(comparison.baseline_result.direct_estimated_cost, currency),
+                format_currency(comparison.baseline_result.contingency_amount, currency),
+                format_currency(comparison.baseline_result.scenario_total_cost, currency),
+                format_currency(comparison.baseline_result.profit, currency),
+                format_percentage(comparison.baseline_result.profit_margin_pct),
+                format_percentage(comparison.baseline_result.markup_pct),
+                format_percentage(baseline_inputs.target_margin_pct * Decimal("100")),
+                "YES" if comparison.baseline_result.meets_target_margin else "NO",
+            ],
+            "What-If Scenario": [
+                format_currency(comparison.scenario_result.net_revenue, currency),
+                format_currency(comparison.scenario_result.direct_estimated_cost, currency),
+                format_currency(comparison.scenario_result.contingency_amount, currency),
+                format_currency(comparison.scenario_result.scenario_total_cost, currency),
+                format_currency(comparison.scenario_result.profit, currency),
+                format_percentage(comparison.scenario_result.profit_margin_pct),
+                format_percentage(comparison.scenario_result.markup_pct),
+                format_percentage(baseline_inputs.target_margin_pct * Decimal("100")),
+                "YES" if comparison.scenario_result.meets_target_margin else "NO",
+            ],
+            "Variance (Delta)": [
+                format_currency(comparison.delta_net_revenue, currency),
+                format_currency(comparison.scenario_result.direct_estimated_cost - comparison.baseline_result.direct_estimated_cost, currency),
+                format_currency(comparison.scenario_result.contingency_amount - comparison.baseline_result.contingency_amount, currency),
+                format_currency(comparison.delta_total_cost, currency),
+                format_currency(comparison.delta_profit, currency),
+                f"{comparison.delta_margin_percentage_points:+.2f} pp" if comparison.delta_margin_percentage_points is not None else "N/A",
+                f"{comparison.delta_markup_percentage_points:+.2f} pp" if comparison.delta_markup_percentage_points is not None else "N/A",
+                "—",
+                "Improvement" if comparison.scenario_result.meets_target_margin and not comparison.baseline_result.meets_target_margin else (
+                    "Deterioration" if not comparison.scenario_result.meets_target_margin and comparison.baseline_result.meets_target_margin else "Unchanged"
+                ),
+            ],
+        }
+        st.table(comp_table_data)
+
+        st.markdown("---")
+
+        # 3. Sensitivity Analysis Heatmap
+        st.markdown("##### 3. Sensitivity Analysis Matrix")
+        st.markdown(
+            """
+            Evaluate how varying client discounts and labor cost overruns simultaneously alter engagement economics. 
+            Every cell is calculated dynamically through the commercial engine.
+            """
+        )
+
+        h_col1, h_col2 = st.columns([1, 3])
+        with h_col1:
+            heatmap_metric = st.selectbox(
+                "Sensitivity Metric",
+                options=["Profit Margin (%)", "Operating Profit"],
+                index=0,
+                help="Select whether cells display percentage profit margin or absolute operating profit.",
+            )
+            metric_key = "margin" if "Margin" in heatmap_metric else "profit"
+
+        with h_col2:
+            st.caption(
+                "ℹ️ **Methodology Notice:** This matrix represents a deterministic sensitivity analysis across static assumptions, "
+                "not an empirical statistical forecast or Monte Carlo probability distribution."
+            )
+
+        # Generate standard sensitivity grid (0-20% discount, 0-25% overrun)
+        sensitivity_grid = generate_sensitivity_grid(
+            base_inputs=scenario_inputs,
+            discount_steps=["0.0", "5.0", "10.0", "15.0", "20.0"],
+            overrun_steps=["0.0", "5.0", "10.0", "15.0", "20.0", "25.0"],
+            rates_as_percentages=True,
+        )
+
+        fig_heat = build_sensitivity_heatmap(sensitivity_grid, currency, metric=metric_key)
+        st.plotly_chart(fig_heat, use_container_width=True)
+
+        st.markdown("---")
+
+        # 4. Contracting Commercial Models Comparison (Fixed Fee vs. T&M)
+        st.markdown("##### 4. Contracting Structure Trade-Off: Fixed Fee vs. Time & Materials")
+        st.markdown(
+            """
+            Different contracting arrangements allocate delivery variance risk between the client and the consulting firm. 
+            Below is an illustrative comparison of economic outcomes under equal baseline delivery scope.
+            """
+        )
+
+        m_col1, m_col2 = st.columns(2)
+
+        with m_col1:
+            st.markdown("###### Fixed Fee Contract Model")
+            ff_fee = st.number_input(
+                "Agreed Fixed Contract Price",
+                min_value=0.0,
+                value=float(scen_price),
+                step=5000.0,
+                key="ff_fee",
+            )
+            ff_overrun = st.number_input(
+                "Fixed Fee Labor Overrun (%)",
+                min_value=0.0,
+                max_value=200.0,
+                value=float(scen_overrun),
+                step=5.0,
+                key="ff_overrun",
+            )
+
+            ff_eval = evaluate_fixed_fee_model(
+                agreed_fixed_fee=ff_fee,
+                delivery_costs=baseline_inputs.delivery_costs,
+                software_and_expenses=baseline_inputs.software_tooling_costs + baseline_inputs.other_expenses,
+                contingency_pct=scen_contingency,
+                cost_overrun_pct=ff_overrun,
+            )
+
+            st.markdown(
+                f"""
+                <div class="dw-card">
+                    <div style="font-size: 0.88rem; font-weight: 700; color: #0F2D59;">Fixed Fee Economic Outcome</div>
+                    <div style="font-size: 0.84rem; margin-top: 6px; line-height: 1.6; color: #334155;">
+                        <div><strong>Revenue:</strong> {format_currency(ff_eval.revenue, currency)} (Locked)</div>
+                        <div><strong>Total Delivery Cost:</strong> {format_currency(ff_eval.total_cost, currency)}</div>
+                        <div><strong>Operating Profit:</strong> {format_currency(ff_eval.profit, currency)}</div>
+                        <div><strong>Profit Margin:</strong> {format_percentage(ff_eval.profit_margin_pct)}</div>
+                    </div>
+                    <div style="font-size: 0.78rem; color: #991B1B; margin-top: 8px; border-top: 1px dashed #CBD5E1; padding-top: 6px;">
+                        <strong>Risk Allocation:</strong> {ff_eval.risk_allocation}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with m_col2:
+            st.markdown("###### Time & Materials (T&M) Model")
+            tm_hours = st.number_input(
+                "Planned Billable Hours",
+                min_value=1.0,
+                value=500.0,
+                step=50.0,
+                key="tm_hours",
+            )
+            tm_rate_col1, tm_rate_col2 = st.columns(2)
+            with tm_rate_col1:
+                tm_bill_rate = st.number_input(
+                    "Billing Rate / hr",
+                    min_value=0.0,
+                    value=200.0,
+                    step=10.0,
+                    key="tm_bill",
+                )
+            with tm_rate_col2:
+                tm_cost_rate = st.number_input(
+                    "Cost Rate / hr",
+                    min_value=0.0,
+                    value=100.0,
+                    step=10.0,
+                    key="tm_cost",
+                )
+
+            tm_hours_overrun = st.number_input(
+                "Hours Overrun (%)",
+                min_value=0.0,
+                max_value=200.0,
+                value=float(scen_overrun),
+                step=5.0,
+                key="tm_overrun",
+            )
+
+            tm_eval = evaluate_time_and_materials_model(
+                billable_hours=tm_hours,
+                billing_rate_per_hour=tm_bill_rate,
+                cost_rate_per_hour=tm_cost_rate,
+                software_and_expenses=baseline_inputs.software_tooling_costs + baseline_inputs.other_expenses,
+                contingency_pct=0.0,
+                hours_overrun_pct=tm_hours_overrun,
+            )
+
+            st.markdown(
+                f"""
+                <div class="dw-card">
+                    <div style="font-size: 0.88rem; font-weight: 700; color: #0F2D59;">Time & Materials Outcome</div>
+                    <div style="font-size: 0.84rem; margin-top: 6px; line-height: 1.6; color: #334155;">
+                        <div><strong>Revenue:</strong> {format_currency(tm_eval.revenue, currency)} (Billed for hours)</div>
+                        <div><strong>Total Delivery Cost:</strong> {format_currency(tm_eval.total_cost, currency)}</div>
+                        <div><strong>Operating Profit:</strong> {format_currency(tm_eval.profit, currency)}</div>
+                        <div><strong>Profit Margin:</strong> {format_percentage(tm_eval.profit_margin_pct)}</div>
+                    </div>
+                    <div style="font-size: 0.78rem; color: #15803D; margin-top: 8px; border-top: 1px dashed #CBD5E1; padding-top: 6px;">
+                        <strong>Risk Allocation:</strong> {tm_eval.risk_allocation}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        st.markdown("---")
+
+        # 5. Export Scenario & Sensitivity Results to CSV
+        st.markdown("##### 5. Export Scenario Analysis to Spreadsheet (CSV)")
+        st.markdown(
+            "Download a complete audit package containing baseline parameters, scenario deltas, and sensitivity grid data."
+        )
+
+        csv_content = export_scenario_to_csv(
+            comparison=comparison,
+            sensitivity_grid=sensitivity_grid,
+            currency_code=currency,
+        )
+
+        st.download_button(
+            label="📥 Download Scenario & Sensitivity Audit (CSV)",
+            data=csv_content,
+            file_name="dealwise_scenario_simulation.csv",
+            mime="text/csv",
+            help="Exports complete numeric model data for Excel or spreadsheet analysis.",
+        )
 
 
 def render_planned_section_view(section):
@@ -870,28 +1269,7 @@ def render_planned_section_view(section):
 
     st.markdown("#### Planned Architectural Components")
 
-    if section.key == "scenario_simulator":
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown(
-                """
-                **Contract Structure Comparison**:
-                - **Time & Materials (T&M)**: Low delivery risk, fee strictly tied to hours delivered.
-                - **Capped T&M**: Shared risk model with not-to-exceed ceiling.
-                - **Fixed Fee**: Full delivery commitment requiring explicit contingency reserve.
-                - **Value-Linked Hybrid**: Reduced base fee with performance bonus upon KPI milestone sign-off.
-                """
-            )
-        with col2:
-            st.markdown(
-                """
-                **Interactive Controls (Roadmap)**:
-                - Multi-deal comparison side-by-side matrices.
-                - Sensitivity surface displaying margin variance across simultaneous rate and volume variations.
-                """
-            )
-
-    elif section.key == "risk_review":
+    if section.key == "risk_review":
         col1, col2 = st.columns(2)
         with col1:
             st.markdown(
@@ -916,7 +1294,7 @@ def render_planned_section_view(section):
     elif section.key == "proposal_reports":
         st.markdown(
             """
-            **Deliverables Planned for Phase 4**:
+            **Deliverables Planned for Phase 5**:
             - **Executive Briefing Sheet**: One-page commercial summary designed for practice leader sign-off.
             - **Client Fee Schedule**: Transparent, professional pricing schedule suitable for proposal appendices.
             - **Governance Audit Log**: Version-controlled snapshot of pricing assumptions, approvals, and margin targets.
@@ -937,6 +1315,8 @@ def main():
         render_overview_page()
     elif selected_section.key == "commercial_analysis":
         render_commercial_analysis_page()
+    elif selected_section.key == "scenario_simulator":
+        render_scenario_simulator_page()
     else:
         render_planned_section_view(selected_section)
 

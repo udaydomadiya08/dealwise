@@ -199,3 +199,20 @@ def test_currency_formatting_in_charts(sample_deal_inputs):
 
     fig_usd = build_revenue_vs_cost_chart(result, "USD")
     assert "USD" in fig_usd.layout.yaxis.title.text
+
+
+def test_build_sensitivity_heatmap(sample_deal_inputs):
+    """Verify build_sensitivity_heatmap generates valid heatmap figure from grid."""
+    from src.scenario_engine import generate_sensitivity_grid
+    from src.dashboard import build_sensitivity_heatmap
+
+    grid = generate_sensitivity_grid(sample_deal_inputs, ["0.0", "5.0"], ["0.0", "10.0"])
+    fig = build_sensitivity_heatmap(grid, "USD", "margin")
+    assert fig is not None
+    assert len(fig.data) == 1
+    assert fig.data[0].type == "heatmap"
+
+    fig_prof = build_sensitivity_heatmap(grid, "INR", "profit")
+    assert fig_prof is not None
+    assert "Operating Profit (INR)" in fig_prof.layout.title.text
+
