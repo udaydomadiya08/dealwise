@@ -14,7 +14,7 @@ class NavSection(NamedTuple):
 
 APP_TITLE = "DealWise"
 APP_SUBTITLE = "Consulting Proposal & Commercial Intelligence Platform"
-APP_VERSION = "0.5.0 (Phase 1-5 Complete)"
+APP_VERSION = "0.6.0 (Phase 1-6 Complete)"
 TARGET_ROLE = "Data & Analytics Value Design Practice"
 
 DISCLAIMER_TEXT = (
@@ -60,9 +60,9 @@ PAGES: List[NavSection] = [
         key="proposal_reports",
         label="Proposal Reports",
         icon="📄",
-        phase=5,
-        is_active=False,
-        summary="Executive proposal summaries, commercial governance audit packs, and client-ready value artifacts.",
+        phase=6,
+        is_active=True,
+        summary="Professional executive proposal briefing, ReportLab PDF generator, commercial pricing schedule, and governance report.",
     ),
 ]
 

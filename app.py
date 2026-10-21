@@ -55,6 +55,13 @@ from src.risk_engine import (
     generate_mitigation_plan,
     export_risk_assessment_csv,
 )
+from src.report_engine import (
+    ProposalMetadata,
+    assemble_proposal_report,
+    generate_proposal_pdf,
+    export_proposal_commercial_csv,
+    generate_report_filename,
+)
 
 # Page configuration
 st.set_page_config(
@@ -215,10 +222,28 @@ DEFAULT_DEAL_PARAMS = {
     "currency_selection": "USD ($)",
 }
 
+DEFAULT_PROPOSAL_METADATA = {
+    "proposal_title": "Enterprise Data Platform & Value Analytics Proposal",
+    "client_name": "Global Retail & Logistics Corp (Hypothetical Demo)",
+    "client_industry": "Supply Chain & Retail Analytics",
+    "prepared_by": "Data & Analytics Commercial Practice",
+    "business_problem": "Client experiences fragmented data ingestion across 14 enterprise ERP systems, leading to delayed financial reconciliation and high operational latency in inventory allocation.",
+    "proposed_solution": "Deliver an integrated modern data platform with automated pipeline governance, near real-time margin analytics, and an executive value realization dashboard.",
+    "scope_deliverables": "Phase 1: Architecture blueprint & ingestion pipeline design (Weeks 1-4).\nPhase 2: Core analytics mart & automated reconciliation (Weeks 5-8).\nPhase 3: Executive dashboard & production deployment (Weeks 9-10).",
+    "assumptions_exclusions": "Assumes client provides cloud environment access by Day 3. Excludes ERP vendor license procurement, third-party API licensing, and legacy hardware decommissioning.",
+    "proposed_timeline": "10 calendar weeks across 3 delivery sprints.",
+    "payment_terms": "Fixed-fee milestone payments: 30% on kick-off, 40% on interim pipeline sign-off (Week 6), 30% upon final acceptance. Net 30 days.",
+    "notes_and_next_steps": "Subject to executive commercial review. Next step: Finalize data schema discovery sprint and complete formal client procurement intake.",
+    "is_hypothetical_demo": True,
+}
+
 
 def init_session_state():
     """Initialize shared commercial parameters across pages."""
     for key, val in DEFAULT_DEAL_PARAMS.items():
+        if key not in st.session_state:
+            st.session_state[key] = val
+    for key, val in DEFAULT_PROPOSAL_METADATA.items():
         if key not in st.session_state:
             st.session_state[key] = val
     if "readiness_checklist" not in st.session_state:
@@ -1579,6 +1604,341 @@ def render_risk_review_page():
     )
 
 
+def render_proposal_reports_page():
+    """Render Phase 6 Proposal and Executive Report Generator page."""
+    st.subheader("📄 Proposal Reports & Executive Commercial Briefing")
+    st.markdown(
+        "Assemble professional consulting proposal briefings, reconciled commercial pricing schedules, "
+        "and downloadable multi-page executive PDF and CSV reports. All figures reflect the active "
+        "Decimal calculation engine and governance risk register."
+    )
+
+    currency = get_active_currency()
+    inputs = get_active_inputs()
+
+    try:
+        inputs.validate()
+        result = calculate_commercials(inputs)
+    except Exception as exc:
+        st.error(f"⚠️ **Commercial Engine Calculation Error**: {exc}. Please review inputs in Commercial Analysis.")
+        return
+
+    # Section 1: Proposal Information & Scoping Form
+    with st.expander("📝 1. Proposal Narrative, Scoping & Governance Inputs", expanded=True):
+        st.caption("Enter engagement context, deliverables, and commercial parameters. Values persist for the active session.")
+
+        f_col1, f_col2 = st.columns(2)
+        with f_col1:
+            title_val = st.text_input(
+                "Proposal Title",
+                value=st.session_state.get("proposal_title", ""),
+                help="Descriptive engagement proposal title.",
+            )
+            st.session_state["proposal_title"] = title_val
+
+            client_val = st.text_input(
+                "Client / Target Organization",
+                value=st.session_state.get("client_name", ""),
+                help="Enterprise client name (hypothetical demo).",
+            )
+            st.session_state["client_name"] = client_val
+
+            ind_val = st.text_input(
+                "Client Industry",
+                value=st.session_state.get("client_industry", ""),
+                help="Target client industry sector.",
+            )
+            st.session_state["client_industry"] = ind_val
+
+            prep_val = st.text_input(
+                "Prepared By",
+                value=st.session_state.get("prepared_by", ""),
+                help="Authoring consulting practice or commercial team.",
+            )
+            st.session_state["prepared_by"] = prep_val
+
+        with f_col2:
+            time_val = st.text_input(
+                "Proposed Timeline",
+                value=st.session_state.get("proposed_timeline", ""),
+                help="Target calendar duration and sprint structure.",
+            )
+            st.session_state["proposed_timeline"] = time_val
+
+            terms_val = st.text_input(
+                "Payment Terms & Milestones",
+                value=st.session_state.get("payment_terms", ""),
+                help="Invoicing schedule and milestone payment terms.",
+            )
+            st.session_state["payment_terms"] = terms_val
+
+            hypo_val = st.checkbox(
+                "Label as Hypothetical Demonstration Data",
+                value=st.session_state.get("is_hypothetical_demo", True),
+                help="Appends clear advisory notices confirming data is synthetic.",
+            )
+            st.session_state["is_hypothetical_demo"] = hypo_val
+
+        prob_val = st.text_area(
+            "Business Problem Definition",
+            value=st.session_state.get("business_problem", ""),
+            height=70,
+            help="Core client pain point and operational context.",
+        )
+        st.session_state["business_problem"] = prob_val
+
+        sol_val = st.text_area(
+            "Proposed Value Design & Solution",
+            value=st.session_state.get("proposed_solution", ""),
+            height=70,
+            help="High-level solution architecture and technical approach.",
+        )
+        st.session_state["proposed_solution"] = sol_val
+
+        scope_val = st.text_area(
+            "Scope & Key Deliverables",
+            value=st.session_state.get("scope_deliverables", ""),
+            height=85,
+            help="Milestone deliverables and phase breakdown.",
+        )
+        st.session_state["scope_deliverables"] = scope_val
+
+        assump_val = st.text_area(
+            "Delivery Assumptions & Exclusions",
+            value=st.session_state.get("assumptions_exclusions", ""),
+            height=70,
+            help="Critical project dependencies and out-of-scope boundaries.",
+        )
+        st.session_state["assumptions_exclusions"] = assump_val
+
+        steps_val = st.text_area(
+            "Commercial Next Steps & Notes",
+            value=st.session_state.get("notes_and_next_steps", ""),
+            height=65,
+            help="Pre-submission partner actions and client procurement steps.",
+        )
+        st.session_state["notes_and_next_steps"] = steps_val
+
+    # Construct ProposalMetadata
+    metadata = ProposalMetadata(
+        title=st.session_state.get("proposal_title", "Commercial Proposal"),
+        client_name=st.session_state.get("client_name", "Enterprise Client"),
+        industry=st.session_state.get("client_industry", "Data & Analytics"),
+        prepared_by=st.session_state.get("prepared_by", "Commercial Team"),
+        business_problem=st.session_state.get("business_problem", "Not provided"),
+        proposed_solution=st.session_state.get("proposed_solution", "Not provided"),
+        scope_deliverables=st.session_state.get("scope_deliverables", "Not provided"),
+        assumptions_exclusions=st.session_state.get("assumptions_exclusions", "Not provided"),
+        timeline=st.session_state.get("proposed_timeline", "Not provided"),
+        payment_terms=st.session_state.get("payment_terms", "Not provided"),
+        notes_and_next_steps=st.session_state.get("notes_and_next_steps", "Not provided"),
+        is_hypothetical_demo=st.session_state.get("is_hypothetical_demo", True),
+    )
+
+    # Incompleteness validation
+    warnings = metadata.validate()
+    if warnings:
+        warn_text = "**Diligence Completeness Notice**: The proposal contains incomplete narrative fields:<br/>" + "<br/>".join(
+            f"• {w}" for w in warnings
+        )
+        st.warning(warn_text)
+
+    # Assemble report content
+    checklist = st.session_state.get("readiness_checklist", get_default_readiness_checklist())
+    custom_risks = st.session_state.get("custom_risks", [])
+    auto_risks = generate_suggested_risk_flags(inputs, result)
+    all_risks = custom_risks + auto_risks
+
+    report_content = assemble_proposal_report(
+        metadata=metadata,
+        commercial_inputs=inputs,
+        commercial_result=result,
+        currency=currency,
+        risks=all_risks,
+        checklist=checklist,
+    )
+
+    st.markdown("---")
+
+    # Section 2: Executive Summary KPI Banner
+    st.markdown("##### 2. Executive Commercial Snapshot")
+    kpi_c1, kpi_c2, kpi_c3, kpi_c4, kpi_c5 = st.columns(5)
+
+    with kpi_c1:
+        st.metric(
+            label=f"Net Realized Revenue ({currency})",
+            value=format_currency(result.net_revenue, currency),
+            delta=f"Discount: {format_percentage(inputs.discount_pct * Decimal('100'))}",
+            delta_color="off",
+        )
+    with kpi_c2:
+        st.metric(
+            label=f"Scenario Total Cost ({currency})",
+            value=format_currency(result.scenario_total_cost, currency),
+            delta=f"Contingency: {format_percentage(inputs.contingency_pct * Decimal('100'))}",
+            delta_color="off",
+        )
+    with kpi_c3:
+        st.metric(
+            label=f"Operating Profit ({currency})",
+            value=format_currency(result.profit, currency),
+            delta="Profitable" if result.is_profitable else "Deficit / Loss",
+            delta_color="normal" if result.is_profitable else "inverse",
+        )
+    with kpi_c4:
+        margin_str = format_percentage(result.profit_margin_pct) if result.profit_margin_pct is not None else "N/A"
+        st.metric(
+            label="Profit Margin",
+            value=margin_str,
+            delta="Target Met" if result.meets_target_margin else "Target Deficit",
+            delta_color="normal" if result.meets_target_margin else "inverse",
+        )
+    with kpi_c5:
+        st.metric(
+            label="Proposal Readiness",
+            value=f"{report_content.risk.readiness_score_pct}%",
+            delta=f"{report_content.risk.open_risks_count} Open Risks",
+            delta_color="normal" if report_content.risk.readiness_score_pct >= Decimal("80.0") else "inverse",
+        )
+
+    st.markdown("---")
+
+    # Section 3: Interactive On-Screen Report Preview
+    st.markdown("##### 3. Executive Report Preview")
+    tab_comm, tab_risk, tab_narrative = st.tabs([
+        "💼 Commercial Pricing Schedule",
+        "🛡️ Risk & Diligence Governance",
+        "📄 Proposal Narrative & Scope",
+    ])
+
+    with tab_comm:
+        st.markdown("**Commercial Fee Schedule & Pricing Reconciliations**")
+        sched_df = pd.DataFrame([
+            {"Commercial Line Item": "Base Quoted Price (List)", "Modeled Value": format_currency(inputs.base_quoted_price, currency), "Analytical Guidance": "Full contractual list price prior to discount"},
+            {"Commercial Line Item": "Client Discount Concession", "Modeled Value": format_percentage(inputs.discount_pct * Decimal("100")), "Analytical Guidance": "Negotiated partner commercial concession"},
+            {"Commercial Line Item": "Net Realized Revenue", "Modeled Value": format_currency(result.net_revenue, currency), "Analytical Guidance": "Base Quoted Price × (1 - Discount %)"},
+            {"Commercial Line Item": "Direct Delivery Labor", "Modeled Value": format_currency(inputs.delivery_costs, currency), "Analytical Guidance": "Base consulting delivery effort"},
+            {"Commercial Line Item": "Software & Tooling", "Modeled Value": format_currency(inputs.software_tooling_costs, currency), "Analytical Guidance": "Direct cloud, software, and vendor licensing"},
+            {"Commercial Line Item": "Other Delivery Expenses", "Modeled Value": format_currency(inputs.other_expenses, currency), "Analytical Guidance": "Travel, logistics, and onboarding expenses"},
+            {"Commercial Line Item": "Direct Estimated Cost", "Modeled Value": format_currency(result.direct_estimated_cost, currency), "Analytical Guidance": "Labor + Software + Expenses"},
+            {"Commercial Line Item": "Contingency Buffer", "Modeled Value": f"{format_currency(result.contingency_amount, currency)} ({format_percentage(inputs.contingency_pct * Decimal('100'))})", "Analytical Guidance": "Reserve applied to direct estimated cost"},
+            {"Commercial Line Item": "Baseline Total Cost", "Modeled Value": format_currency(result.baseline_total_cost, currency), "Analytical Guidance": "Direct Cost + Contingency Buffer"},
+            {"Commercial Line Item": "Labor Overrun Modeled", "Modeled Value": format_percentage(inputs.cost_overrun_pct * Decimal("100")), "Analytical Guidance": "Active scenario delivery friction assumption"},
+            {"Commercial Line Item": "Scenario Total Cost", "Modeled Value": format_currency(result.scenario_total_cost, currency), "Analytical Guidance": "Direct cost + contingency + overrun"},
+            {"Commercial Line Item": "Operating Profit / (Loss)", "Modeled Value": format_currency(result.profit, currency), "Analytical Guidance": "Net Realized Revenue - Scenario Total Cost"},
+            {"Commercial Line Item": "Profit Margin (%)", "Modeled Value": format_percentage(result.profit_margin_pct) if result.profit_margin_pct is not None else "N/A", "Analytical Guidance": f"Practice Target: {format_percentage(inputs.target_margin_pct * Decimal('100'))}"},
+            {"Commercial Line Item": "Markup on Cost (%)", "Modeled Value": format_percentage(result.markup_pct) if result.markup_pct is not None else "N/A", "Analytical Guidance": "Profit / Scenario Total Cost"},
+            {"Commercial Line Item": "Break-Even Net Revenue", "Modeled Value": format_currency(result.break_even_net_revenue, currency), "Analytical Guidance": "Zero-profit revenue requirement"},
+            {"Commercial Line Item": "Required Quoted Price for Target Margin", "Modeled Value": format_currency(result.required_quoted_price, currency) if result.required_quoted_price is not None else "N/A", "Analytical Guidance": "Quoted price required to achieve target margin at active discount"},
+        ])
+        st.dataframe(sched_df, hide_index=True, use_container_width=True)
+
+    with tab_risk:
+        st.markdown(
+            f"**Diligence Readiness Progress**: **{report_content.risk.readiness_score_pct}%** "
+            f"({report_content.risk.completed_items_count} of {report_content.risk.applicable_items_count} items completed)."
+        )
+        if report_content.risk.unresolved_items:
+            st.markdown("**Outstanding Diligence Checklist Milestones:**")
+            for item in report_content.risk.unresolved_items:
+                st.markdown(f"- ⏳ **[{item.item_id}] {item.title}** ({item.category}): *Status: {item.status.value}* — {item.description}")
+
+        st.markdown("---")
+        st.markdown("**Active Commercial Risk Register:**")
+        if report_content.risk.prioritized_risks:
+            r_data = [
+                {
+                    "Risk ID": r.risk_id,
+                    "Category": r.category,
+                    "Description": r.description,
+                    "Score": r.score,
+                    "Severity": r.severity.value,
+                    "Owner": r.owner,
+                    "Mitigation": r.mitigation,
+                    "Status": r.status,
+                }
+                for r in report_content.risk.prioritized_risks[:8]
+            ]
+            st.dataframe(pd.DataFrame(r_data), hide_index=True, use_container_width=True)
+
+        if report_content.risk.mitigation_actions:
+            st.markdown("**Prioritized Action Plan:**")
+            p_data = [
+                {
+                    "Rank": m.priority_rank,
+                    "Action Required": m.action_text,
+                    "Trigger Rationale": m.trigger_rationale,
+                    "Suggested Role": m.suggested_role,
+                }
+                for m in report_content.risk.mitigation_actions[:5]
+            ]
+            st.dataframe(pd.DataFrame(p_data), hide_index=True, use_container_width=True)
+
+    with tab_narrative:
+        st.markdown(f"### {_xml_escape(metadata.title)}")
+        st.markdown(f"**Target Client**: {metadata.client_name} | **Industry**: {metadata.industry}")
+        st.markdown(f"**Prepared By**: {metadata.prepared_by} | **Date**: {metadata.date_str}")
+        st.markdown("---")
+        st.markdown(f"**Business Problem Definition**:\n\n{metadata.business_problem}")
+        st.markdown(f"**Proposed Value Design & Solution**:\n\n{metadata.proposed_solution}")
+        st.markdown(f"**Core Delivery Scope & Milestones**:\n\n{metadata.scope_deliverables}")
+        st.markdown(f"**Delivery Assumptions & Exclusions**:\n\n{metadata.assumptions_exclusions}")
+        st.markdown(f"**Timeline**: {metadata.timeline} | **Payment Terms**: {metadata.payment_terms}")
+        st.markdown(f"**Commercial Next Steps**:\n\n{metadata.notes_and_next_steps}")
+        st.caption(f"🛡️ {report_content.disclaimer_text}")
+
+    st.markdown("---")
+
+    # Section 4: Downloads & Export Actions
+    st.markdown("##### 4. Download Commercial Deliverables & Audit Packs")
+    d_col1, d_col2, d_col3 = st.columns(3)
+
+    # 1. PDF Download
+    try:
+        pdf_bytes = generate_proposal_pdf(report_content)
+        pdf_filename = generate_report_filename(metadata.title, metadata.client_name, "pdf")
+        with d_col1:
+            st.download_button(
+                label="📥 Download Executive Proposal Report (PDF)",
+                data=pdf_bytes,
+                file_name=pdf_filename,
+                mime="application/pdf",
+                help="Generates clean, multi-page ReportLab PDF briefing with running headers and page numbers.",
+            )
+    except Exception as exc:
+        with d_col1:
+            st.error(f"PDF Generation Error: {exc}")
+
+    # 2. Commercial CSV Download
+    csv_comm_text = export_proposal_commercial_csv(report_content)
+    csv_filename = generate_report_filename(metadata.title, metadata.client_name, "csv")
+    with d_col2:
+        st.download_button(
+            label="📊 Download Commercial Pricing Schedule (CSV)",
+            data=csv_comm_text,
+            file_name=csv_filename,
+            mime="text/csv",
+            help="Exports structured commercial metrics and pricing schedule to spreadsheet CSV format.",
+        )
+
+    # 3. Risk & Governance CSV Download
+    stress_cases = evaluate_financial_stress_cases(inputs, result)
+    csv_risk_text = export_risk_assessment_csv(
+        risks=all_risks,
+        checklist=checklist,
+        stress_cases=stress_cases,
+        currency=currency,
+    )
+    with d_col3:
+        st.download_button(
+            label="🛡️ Download Risk & Diligence Audit (CSV)",
+            data=csv_risk_text,
+            file_name="dealwise_risk_diligence_audit.csv",
+            mime="text/csv",
+            help="Exports risk register, diligence checklist, and financial exposure stress cases.",
+        )
+
+
 def render_planned_section_view(section):
     """Render planned module placeholder with architecture and requirements blueprint."""
     st.subheader(f"{section.icon} {section.label}")
@@ -1590,20 +1950,7 @@ def render_planned_section_view(section):
         """,
         unsafe_allow_html=True,
     )
-
     st.info(f"**Module Objective**: {section.summary}")
-    st.markdown("#### Planned Architectural Components")
-
-    if section.key == "proposal_reports":
-        st.markdown(
-            """
-            **Deliverables Planned for Phase 5 / Future Releases**:
-            - **Executive Briefing Sheet**: One-page commercial summary designed for practice leader sign-off.
-            - **Client Fee Schedule**: Transparent, professional pricing schedule suitable for proposal appendices.
-            - **Governance Audit Log**: Version-controlled snapshot of pricing assumptions, approvals, and margin targets.
-            """
-        )
-
     st.warning(
         f"⚙️ **Status**: Module planned for upcoming implementation milestone (Phase {section.phase})."
     )
@@ -1622,10 +1969,13 @@ def main():
         render_scenario_simulator_page()
     elif selected_section.key == "risk_review":
         render_risk_review_page()
+    elif selected_section.key == "proposal_reports":
+        render_proposal_reports_page()
     else:
         render_planned_section_view(selected_section)
 
 
 if __name__ == "__main__":
     main()
+
 

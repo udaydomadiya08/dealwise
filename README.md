@@ -71,7 +71,16 @@ Consulting proposals frequently experience margin slippage and commercial vulner
   - **Financial Exposure Stress Testing (No Double-Counting)**: Evaluates +20% labor overrun shock, +10% discount concession shock, and compound stress cases. Distinguishes standalone adverse stress outcomes from expected losses and explicitly tracks existing contingency inclusion to avoid double-counting.
   - **Prioritized Mitigation Engine**: Generates role-assigned, actionable advisory recommendations explaining triggering conditions and suggested mitigation playbooks.
   - **Integrated Risk Review UI & CSV Export**: Interactive Streamlit page allowing live risk register edits, checklist item updates, financial stress inspections, and downloadable CSV audits.
-- **Comprehensive Automated Test Suite**: 90 unit tests verifying commercial calculations, scenario comparisons, risk scoring bands, readiness metrics, boundary conditions, stress reconciliations, and export integrity.
+
+### Phase 6: Proposal and Executive Report Generator
+- **Independent Report Engine (`src/report_engine.py`)**:
+  - **Structured Data Assembly**: Decouples report data collection from visual rendering via `ProposalMetadata`, `CommercialScheduleData`, `ScenarioSummaryData`, `RiskSummaryData`, and `ProposalReportContent`.
+  - **Strict Validation & Gap Flagging**: Validates proposal metadata without inventing facts; incomplete terms or missing scopes are surfaced as explicit diligence warnings rather than masked.
+  - **Professional ReportLab PDF Generator**: Compiles multi-page executive PDFs directly in memory (`io.BytesIO`) using a custom two-pass `NumberedCanvas` (running headers, dynamic "Page X of Y" footers), clean corporate styling, and repeated table headers across pages (`repeatRows=1`).
+  - **Reconciled Pricing & Scenario Schedules**: Directly leverages `CommercialResult` and `ScenarioComparison` as single sources of truth—guaranteeing 100% mathematical consistency across dashboard, register, and export artifacts.
+  - **Interactive Proposal Reports Interface (`app.py`)**: Streamlit interface featuring a proposal narrative form, real-time completeness checks, synchronized KPI banner, multi-tab on-screen preview, and instant downloads.
+  - **Tri-Format Commercial Exports**: One-click downloads for Executive Briefing PDF, Commercial Schedule CSV, and Risk/Diligence Governance CSV.
+- **Comprehensive Automated Test Suite**: 103 unit tests verifying commercial formulas, scenario comparisons, risk scoring bands, readiness metrics, report assembly, PDF bytes structure, text extraction via `pypdf`, and CSV downloads.
 
 ---
 
@@ -230,6 +239,49 @@ pip install -r requirements.txt
 
 ---
 
+## 📄 Proposal Report Architecture & Governance Workflow
+
+### 1. Architectural Pipeline
+The report-generation module (`src/report_engine.py`) cleanly separates **data preparation** from **document rendering**:
+```
+User Scoping Inputs (Form)
+        +
+Commercial Calculation Engine (src/commercial_engine.py)
+        +
+Scenario Comparison Engine (src/scenario_engine.py)
+        +
+Risk Intelligence & Checklist Engine (src/risk_engine.py)
+        │
+        ▼
+Structured Proposal Data Model (ProposalReportContent)
+        │
+        ├──► Executive Multi-Page PDF (ReportLab Platypus Engine)
+        │       • Custom NumberedCanvas (running headers & dynamic "Page X of Y" footers)
+        │       • Multi-level typography and corporate navy palette (#0F172A, #2563EB)
+        │       • Auto-wrapping Paragraph tables with repeated headers across page breaks
+        │       • Synthetic demo data disclaimers on cover & footer
+        │
+        ├──► Commercial Pricing Schedule CSV (Spreadsheet audit format)
+        │
+        └──► Risk & Diligence Governance CSV (Multi-section audit pack)
+```
+
+### 2. Multi-Page PDF Report Structure
+The generated ReportLab PDF document adheres to consulting publication standards:
+1. **Cover Page**: Proposal title, target client, industry, authoring team, date, currency, readiness score, and prominent synthetic data disclaimer.
+2. **1.0 Executive Summary & Strategic Context**: Objective narrative synthesis, business problem definition, and proposed value design approach.
+3. **2.0 Scope, Deliverables & Delivery Boundaries**: Key milestone breakdown, formal assumptions, and explicit out-of-scope exclusions.
+4. **3.0 Commercial Pricing Schedule & Financial Architecture**: Full 17-line commercial table detailing list price, discount, net revenue, direct costs, contingency reserve, baseline total cost, overrun sensitivity, scenario total cost, operating profit/loss, margin %, markup %, break-even revenue, and required quoted price.
+5. **4.0 What-If Scenario Stress Comparison** *(when scenario is evaluated)*: Baseline vs. what-if metrics with percentage-point margin deltas.
+6. **5.0 Commercial Risk Intelligence & Readiness Governance**: Diligence readiness completion metric, unresolved checklist items, prioritized risk register table, and actionable mitigation plan.
+7. **6.0 Next Steps & Methodological Limitations**: Immediate commercial actions and clear disclaimers regarding ordinal scoring and analytical modeling.
+
+### 3. Commercial Commitments vs. Analytical Estimates
+- **Demonstration & Advisory Status**: DealWise models analytical projections to guide commercial structuring and pre-submission diligence. It does **not** constitute an official Infosys contractual commitment, approved client proposal, or binding legal tender.
+- **Human Approval Authority**: High readiness scores indicate thorough diligence completeness; they do not substitute for formal partner commercial sign-off and legal review.
+
+---
+
 ## ▶️ Running the Application Locally
 
 With your virtual environment activated:
@@ -251,7 +303,7 @@ Run the test suite using `pytest`:
 pytest -v
 ```
 
-All 90 unit tests will execute, verifying:
+All 103 unit tests will execute, verifying:
 - Application configuration, metadata, and disclaimer compliance.
 - Commercial engine formulas, discounts, overruns, contingency, and target pricing.
 - Margin versus markup mathematical distinction.
@@ -265,7 +317,11 @@ All 90 unit tests will execute, verifying:
 - Proposal readiness checklist score calculations, applicable denominators, and empty/full states.
 - Rule-based mitigation plan generation and reason tracking.
 - Financial stress cases with exact commercial engine reconciliation and double-counting safeguards.
-- CSV export format, headers, and numeric integrity for scenario audits and risk registers.
+- Report content assembly from valid inputs and graceful handling of missing fields.
+- ReportLab in-memory PDF generation, valid byte streams, and text extraction via `pypdf`.
+- Multi-page document resilience under long narrative content and extensive risk tables.
+- Consistent currency labels without unintended foreign exchange conversion.
+- CSV export format, headers, and numeric integrity for scenario audits, risk registers, and proposal schedules.
 
 ---
 
@@ -295,9 +351,12 @@ All 90 unit tests will execute, verifying:
   - Financial exposure stress-testing (labor overrun shock, discount shock, compound shock) avoiding double counting.
   - Rule-based mitigation action generator with responsible consulting roles.
   - Risk register table, checklist UI, and downloadable risk assessment CSV export.
-- [ ] **Phase 6: Executive Briefing & Client Export Suite** (Upcoming)
-  - Partner commercial briefing sheet and governance approval workflows.
-  - Client-facing proposal fee schedule generation.
+- [x] **Phase 6: Proposal and Executive Report Generator** (Complete)
+  - Reusable report assembly engine (`src/report_engine.py`) and proposal metadata validation.
+  - Multi-page executive ReportLab PDF generation with running headers and dynamic page numbering.
+  - Proposal narrative form with real-time session persistence in Streamlit.
+  - Multi-tab on-screen report preview (Pricing Schedule, Risk & Governance, Proposal Narrative).
+  - Tri-format exports: Executive PDF, Commercial Schedule CSV, and Risk/Readiness Audit CSV.
 
 ---
 

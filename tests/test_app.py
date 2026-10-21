@@ -49,14 +49,14 @@ def test_navigation_section_schema():
         assert section.key.isidentifier()
         assert len(section.label.strip()) > 0
         assert len(section.icon.strip()) > 0
-        assert section.phase in (1, 2, 3, 4, 5)
+        assert section.phase in (1, 2, 3, 4, 5, 6)
         assert isinstance(section.is_active, bool)
         assert len(section.summary.strip()) > 0
 
-    # In Phase 5, overview, commercial_analysis, scenario_simulator, and risk_review are active
+    # In Phase 6, all five pages are active
     active_pages = [p.key for p in PAGES if p.is_active]
-    assert active_pages == ["overview", "commercial_analysis", "scenario_simulator", "risk_review"], (
-        f"Expected overview, commercial_analysis, scenario_simulator, and risk_review active in Phase 5, found: {active_pages}"
+    assert active_pages == ["overview", "commercial_analysis", "scenario_simulator", "risk_review", "proposal_reports"], (
+        f"Expected all 5 pages active in Phase 6, found: {active_pages}"
     )
 
 
@@ -68,7 +68,7 @@ def test_navigation_map_integrity():
         assert nav_map[p.key] == p
 
 
-@pytest.mark.parametrize("module_name", ["streamlit", "pandas", "plotly"])
+@pytest.mark.parametrize("module_name", ["streamlit", "pandas", "plotly", "reportlab", "pypdf"])
 def test_core_dependencies_importable(module_name: str):
     """Verify core analytical & UI libraries are resolvable and functional."""
     mod = importlib.import_module(module_name)
