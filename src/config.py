@@ -14,7 +14,7 @@ class NavSection(NamedTuple):
 
 APP_TITLE = "DealWise"
 APP_SUBTITLE = "Consulting Proposal & Commercial Intelligence Platform"
-APP_VERSION = "0.1.0 (Phase 1)"
+APP_VERSION = "0.2.0 (Phase 1 & 2)"
 TARGET_ROLE = "Data & Analytics Value Design Practice"
 
 DISCLAIMER_TEXT = (
@@ -37,8 +37,8 @@ PAGES: List[NavSection] = [
         label="Commercial Analysis",
         icon="💼",
         phase=2,
-        is_active=False,
-        summary="Staffing pyramid modeling, blended bill rates, gross margin waterfalls, and delivery cost baselines.",
+        is_active=True,
+        summary="Interactive commercial calculation engine, margin waterfalls, break-even pricing, and cost structuring.",
     ),
     NavSection(
         key="scenario_simulator",

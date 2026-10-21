@@ -53,9 +53,11 @@ def test_navigation_section_schema():
         assert isinstance(section.is_active, bool)
         assert len(section.summary.strip()) > 0
 
-    # In Phase 1, only the overview page should be marked active
+    # In Phase 2, overview and commercial_analysis are marked active
     active_pages = [p.key for p in PAGES if p.is_active]
-    assert active_pages == ["overview"], f"Expected only overview active in Phase 1, found: {active_pages}"
+    assert active_pages == ["overview", "commercial_analysis"], (
+        f"Expected overview and commercial_analysis active in Phase 2, found: {active_pages}"
+    )
 
 
 def test_navigation_map_integrity():
