@@ -3,7 +3,9 @@
 Phases 1-4: Project Foundation, Commercial Engine, Executive Dashboard & Scenario Simulator.
 """
 
+import html
 from decimal import Decimal
+import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 from src.config import (
@@ -1875,7 +1877,7 @@ def render_proposal_reports_page():
             st.dataframe(pd.DataFrame(p_data), hide_index=True, use_container_width=True)
 
     with tab_narrative:
-        st.markdown(f"### {_xml_escape(metadata.title)}")
+        st.markdown(f"### {html.escape(metadata.title)}")
         st.markdown(f"**Target Client**: {metadata.client_name} | **Industry**: {metadata.industry}")
         st.markdown(f"**Prepared By**: {metadata.prepared_by} | **Date**: {metadata.date_str}")
         st.markdown("---")

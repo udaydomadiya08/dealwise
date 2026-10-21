@@ -37,3 +37,8 @@ htmlcov/
 
 # Temporary logs
 *.log
+
+# Generated export artifacts and downloads
+*.pdf
+dealwise_*.csv
+

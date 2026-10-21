@@ -80,7 +80,13 @@ Consulting proposals frequently experience margin slippage and commercial vulner
   - **Reconciled Pricing & Scenario Schedules**: Directly leverages `CommercialResult` and `ScenarioComparison` as single sources of truth—guaranteeing 100% mathematical consistency across dashboard, register, and export artifacts.
   - **Interactive Proposal Reports Interface (`app.py`)**: Streamlit interface featuring a proposal narrative form, real-time completeness checks, synchronized KPI banner, multi-tab on-screen preview, and instant downloads.
   - **Tri-Format Commercial Exports**: One-click downloads for Executive Briefing PDF, Commercial Schedule CSV, and Risk/Diligence Governance CSV.
-- **Comprehensive Automated Test Suite**: 103 unit tests verifying commercial formulas, scenario comparisons, risk scoring bands, readiness metrics, report assembly, PDF bytes structure, text extraction via `pypdf`, and CSV downloads.
+
+### Phase 7: End-to-End Quality Assurance & Deployment Readiness
+- **Comprehensive Programmatic UI Testing**: Utilizes Streamlit's native `AppTest` framework to verify all 5 platform views, sidebar navigation, form inputs, and metric cards without throwing uncaught exceptions.
+- **Cross-Engine Mathematical Reconciliation**: Verified that commercial engine outputs, scenario comparisons, financial stress tests, and PDF/CSV deliverables strictly reconcile without variance or double-counting.
+- **Rapid Deployment Smoke Test (`tests/test_smoke.py`)**: Sub-second health check validating Python syntax, configuration schema, core Decimal calculation, and in-memory ReportLab PDF compilation.
+- **Dependency & Security Hardening**: Tested fresh-environment installation from `requirements.txt`, verified zero hardcoded secrets or developer paths, and sanitized file export names.
+- **Comprehensive Automated Test Suite**: 113 unit and integration tests executing cleanly with 100% pass rate.
 
 ---
 
@@ -303,7 +309,7 @@ Run the test suite using `pytest`:
 pytest -v
 ```
 
-All 103 unit tests will execute, verifying:
+All 113 unit and integration tests will execute, verifying:
 - Application configuration, metadata, and disclaimer compliance.
 - Commercial engine formulas, discounts, overruns, contingency, and target pricing.
 - Margin versus markup mathematical distinction.
@@ -322,6 +328,22 @@ All 103 unit tests will execute, verifying:
 - Multi-page document resilience under long narrative content and extensive risk tables.
 - Consistent currency labels without unintended foreign exchange conversion.
 - CSV export format, headers, and numeric integrity for scenario audits, risk registers, and proposal schedules.
+- Programmatic Streamlit UI execution across all 5 modules via `streamlit.testing.v1.AppTest`.
+- Rapid deployment smoke test suite (`tests/test_smoke.py`) executing sub-second syntax and smoke health checks.
+
+---
+
+## ☁️ Deployment Guide (Streamlit Community Cloud)
+
+DealWise is architected to deploy directly to [Streamlit Community Cloud](https://streamlit.io/cloud) without requiring external databases, paid APIs, or local volume mounts:
+
+### Deployment Steps
+1. **Repository Setup**: Ensure the repository is hosted on GitHub.
+2. **Streamlit Cloud Dashboard**: Select **New app**, choose the repository and `main` branch.
+3. **App Entry Point**: Specify `app.py` as the main file path.
+4. **Environment & Secrets**: No external environment variables or secrets are required (`secrets.toml` is not needed).
+5. **Configuration**: Streamlit Community Cloud automatically reads `.streamlit/config.toml` (which enforces `headless = true`, `enableXsrfProtection = true`, and sets the custom corporate theme).
+6. **In-Memory Operations**: Executive PDFs and CSVs are generated entirely in memory via Python `BytesIO` and `StringIO`, ensuring zero persistent disk writes on containerized infrastructure.
 
 ---
 
@@ -357,6 +379,14 @@ All 103 unit tests will execute, verifying:
   - Proposal narrative form with real-time session persistence in Streamlit.
   - Multi-tab on-screen report preview (Pricing Schedule, Risk & Governance, Proposal Narrative).
   - Tri-format exports: Executive PDF, Commercial Schedule CSV, and Risk/Readiness Audit CSV.
+- [x] **Phase 7: End-to-End Quality Assurance & Deployment Readiness** (Complete)
+  - Full programmatic Streamlit UI integration test suite via `AppTest`.
+  - Sub-second deployment smoke tests (`tests/test_smoke.py`).
+  - Cross-module mathematical reconciliation and zero double-counting verification.
+  - Fresh-environment installation verification from `requirements.txt`.
+  - Security audit confirming zero secrets, no hardcoded developer paths, and safe HTML escaping.
+- [ ] **Phase 8: Production Release & GitHub Publication** (Upcoming)
+  - Remote repository setup, release tagging, and live deployment configuration.
 
 ---
 
