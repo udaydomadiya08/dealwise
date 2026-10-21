@@ -40,6 +40,21 @@ from src.scenario_engine import (
     evaluate_time_and_materials_model,
     export_scenario_to_csv,
 )
+from src.risk_engine import (
+    RiskRecord,
+    RiskSeverity,
+    ChecklistItem,
+    ChecklistStatus,
+    calculate_risk_score,
+    get_risk_severity,
+    prioritize_risks,
+    calculate_proposal_readiness,
+    get_default_readiness_checklist,
+    evaluate_financial_stress_cases,
+    generate_suggested_risk_flags,
+    generate_mitigation_plan,
+    export_risk_assessment_csv,
+)
 
 # Page configuration
 st.set_page_config(
@@ -206,6 +221,10 @@ def init_session_state():
     for key, val in DEFAULT_DEAL_PARAMS.items():
         if key not in st.session_state:
             st.session_state[key] = val
+    if "readiness_checklist" not in st.session_state:
+        st.session_state["readiness_checklist"] = get_default_readiness_checklist()
+    if "custom_risks" not in st.session_state:
+        st.session_state["custom_risks"] = []
 
 
 def get_active_inputs() -> CommercialInputs:
@@ -1253,6 +1272,313 @@ def render_scenario_simulator_page():
         )
 
 
+def render_risk_review_page():
+    """Render Phase 5 Commercial Risk Intelligence, Proposal Readiness, and Exposure Analysis."""
+    st.subheader("🛡️ Commercial Risk Intelligence & Proposal Readiness")
+    st.markdown(
+        """
+        Comprehensive commercial diligence workspace: manage qualitative risk registers, 
+        audit proposal readiness checklists, quantify deterministic financial stress exposures, 
+        and formulate actionable mitigation plans prior to commercial sign-off.
+        """
+    )
+
+    currency = get_active_currency()
+    active_inputs = get_active_inputs()
+    active_res = calculate_commercials(active_inputs)
+
+    # Transparency disclaimer
+    st.markdown(
+        """
+        <div class="dw-disclaimer-box" style="margin-bottom: 16px;">
+            <strong>GOVERNANCE NOTICE:</strong> All initial risk items represent hypothetical demonstration archetypes. 
+            Ordinal risk scores (Likelihood &times; Impact) provide qualitative prioritization rankings and do not represent 
+            actuarial loss probabilities or statistical forecasts. Proposal readiness measures diligence checklist completion; 
+            final commercial commitment remains a human decision by practice leadership.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Combine auto-suggested risk flags with custom user risks
+    suggested_risks = generate_suggested_risk_flags(active_inputs, active_res)
+    custom_risks: List[RiskRecord] = st.session_state.get("custom_risks", [])
+
+    # All unique risks
+    all_risks_dict = {r.risk_id: r for r in suggested_risks}
+    for cr in custom_risks:
+        all_risks_dict[cr.risk_id] = cr
+    all_risks = list(all_risks_dict.values())
+
+    # Calculate readiness and financial stress cases
+    checklist: List[ChecklistItem] = st.session_state.get("readiness_checklist", get_default_readiness_checklist())
+    readiness = calculate_proposal_readiness(checklist)
+    stress_cases = evaluate_financial_stress_cases(active_inputs, active_res)
+
+    # Top Executive Summary Metrics (4 cards)
+    r1, r2, r3, r4 = st.columns(4)
+
+    with r1:
+        open_count = sum(1 for r in all_risks if r.status.lower() in ("open", "in progress"))
+        st.markdown(
+            f"""
+            <div class="dw-card">
+                <div class="dw-card-title">Open Identified Risks</div>
+                <div class="dw-card-value">{open_count}</div>
+                <div class="dw-card-subtext">{len(all_risks)} total cataloged risks</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with r2:
+        crit_high_count = sum(1 for r in all_risks if r.severity in (RiskSeverity.CRITICAL, RiskSeverity.HIGH))
+        badge_cls = "dw-badge-danger" if crit_high_count > 0 else "dw-badge-active"
+        st.markdown(
+            f"""
+            <div class="dw-card">
+                <div class="dw-card-title">Critical & High Risks</div>
+                <div class="dw-card-value" style="color: {'#DC2626' if crit_high_count > 0 else '#15803D'};">{crit_high_count}</div>
+                <div class="dw-card-subtext"><span class="{badge_cls}">{crit_high_count} Priority Flags</span> Requiring mitigation</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with r3:
+        readiness_badge = "dw-badge-active" if readiness.is_ready_for_review else "dw-badge-warning"
+        st.markdown(
+            f"""
+            <div class="dw-card">
+                <div class="dw-card-title">Proposal Diligence Score</div>
+                <div class="dw-card-value">{readiness.completion_pct}%</div>
+                <div class="dw-card-subtext"><span class="{readiness_badge}">{readiness.completed_items}/{readiness.applicable_items} Done</span> Excludes N/A items</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with r4:
+        max_drawdown = min(sc.profit_impact for sc in stress_cases)
+        st.markdown(
+            f"""
+            <div class="dw-card">
+                <div class="dw-card-title">Max Stress Drawdown</div>
+                <div class="dw-card-value dw-card-value-negative">{format_currency(max_drawdown, currency)}</div>
+                <div class="dw-card-subtext">Compound adverse stress impact</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("---")
+
+    # 4 Modular Governance Tabs
+    tab_readiness, tab_register, tab_stress, tab_mitigation = st.tabs([
+        "📋 Proposal Readiness Checklist",
+        "📑 Commercial Risk Register",
+        "📉 Financial Stress-Testing",
+        "🎯 Prioritized Mitigation Plan",
+    ])
+
+    # TAB 1: Proposal Readiness Governance Checklist
+    with tab_readiness:
+        st.markdown("##### Proposal Governance Diligence Checklist")
+        st.markdown(
+            f"""
+            <div style="background-color: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 0.85rem; color: #334155;">
+                <strong>Governance Narrative:</strong> {readiness.summary_narrative}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        st.progress(float(readiness.completion_pct) / 100.0)
+
+        # Interactive checklist editor
+        updated_checklist: List[ChecklistItem] = []
+        for idx, item in enumerate(checklist):
+            c_info, c_status = st.columns([3, 1])
+            with c_info:
+                st.markdown(f"**{item.item_id}: {item.title}** `[{item.category}]`")
+                st.caption(item.description)
+
+            with c_status:
+                status_options = [s.value for s in ChecklistStatus]
+                current_idx = status_options.index(item.status.value)
+                new_status_str = st.selectbox(
+                    f"Status for {item.item_id}",
+                    options=status_options,
+                    index=current_idx,
+                    key=f"chk_status_{item.item_id}_{idx}",
+                    label_visibility="collapsed",
+                )
+                updated_item = ChecklistItem(
+                    item_id=item.item_id,
+                    category=item.category,
+                    title=item.title,
+                    description=item.description,
+                    status=ChecklistStatus(new_status_str),
+                    notes=item.notes,
+                )
+                updated_checklist.append(updated_item)
+            st.divider()
+
+        st.session_state["readiness_checklist"] = updated_checklist
+
+    # TAB 2: Commercial Risk Register
+    with tab_register:
+        st.markdown("##### Commercial Risk Register")
+        st.caption("Auto-suggested deal flags based on current pricing and staffing inputs, combined with custom project risks.")
+
+        # Interactive form to add/update custom risk
+        with st.expander("➕ Log New or Update Risk Record", expanded=False):
+            f_col1, f_col2 = st.columns(2)
+            with f_col1:
+                new_id = st.text_input("Risk Identifier", value=f"RSK-{len(all_risks) + 1:03d}")
+                new_cat = st.selectbox("Category", options=["Scope & Delivery", "Commercial & Pricing", "Staffing & Resourcing", "Legal & Governance", "Client Dependency"])
+                new_desc = st.text_area("Risk Description", value="Unvalidated subcontractor reliance in analytics workstream.")
+                new_owner = st.selectbox("Owner / Role", options=["Engagement Manager", "Solutions Architect", "Commercial Partner", "Pricing Director", "Staffing Lead"])
+            with f_col2:
+                new_l = st.slider("Likelihood Score (1-5)", min_value=1, max_value=5, value=3, help="1=Rare, 2=Unlikely, 3=Possible, 4=Likely, 5=Almost Certain")
+                new_i = st.slider("Impact Score (1-5)", min_value=1, max_value=5, value=4, help="1=Insignificant, 2=Minor, 3=Moderate, 4=Major, 5=Severe")
+                new_mit = st.text_area("Mitigation Action", value="Execute back-to-back delivery agreements with primary subcontractor.")
+                new_stat = st.selectbox("Status", options=["Open", "In Progress", "Mitigated", "Accepted"])
+                new_exp = st.number_input("Optional Financial Exposure ($ / ₹)", min_value=0.0, value=10000.0, step=1000.0)
+
+            if st.button("Save Risk Record"):
+                try:
+                    new_rec = RiskRecord(
+                        risk_id=new_id,
+                        category=new_cat,
+                        description=new_desc,
+                        likelihood=new_l,
+                        impact=new_i,
+                        owner=new_owner,
+                        mitigation=new_mit,
+                        status=new_stat,
+                        financial_exposure=Decimal(str(new_exp)) if new_exp > 0 else None,
+                        notes="User logged risk during current session.",
+                        is_auto_suggested=False,
+                    )
+                    # Update session state list
+                    existing_custom = [r for r in st.session_state.get("custom_risks", []) if r.risk_id != new_id]
+                    existing_custom.append(new_rec)
+                    st.session_state["custom_risks"] = existing_custom
+                    st.success(f"✅ Risk record '{new_id}' saved successfully!")
+                    st.rerun()
+                except RiskValidationError as err:
+                    st.error(f"⚠️ Validation Error: {err}")
+
+        # Render Risk Table
+        sorted_risks = prioritize_risks(all_risks)
+        risk_table_data = {
+            "ID": [r.risk_id for r in sorted_risks],
+            "Category": [r.category for r in sorted_risks],
+            "Description": [r.description for r in sorted_risks],
+            "L x I": [f"{r.likelihood} x {r.impact}" for r in sorted_risks],
+            "Score": [r.score for r in sorted_risks],
+            "Severity": [r.severity.value for r in sorted_risks],
+            "Owner": [r.owner for r in sorted_risks],
+            "Status": [r.status for r in sorted_risks],
+            f"Exposure ({currency})": [format_currency(r.financial_exposure, currency) if r.financial_exposure is not None else "—" for r in sorted_risks],
+            "Source": ["Auto Flag" if r.is_auto_suggested else "Custom Log" for r in sorted_risks],
+        }
+        st.table(risk_table_data)
+
+    # TAB 3: Financial Exposure & Stress-Testing
+    with tab_stress:
+        st.markdown("##### Deterministic Financial Stress-Testing")
+        st.markdown(
+            """
+            Stress-testing evaluates how specific adverse operational and commercial shocks erode 
+            engagement profitability using the underlying commercial engine.
+            """
+        )
+
+        st.caption(
+            "🛡️ **Double-Counting Transparency:** The stress cases below model incremental friction beyond the saved baseline. "
+            "Exposures are not added on top of existing scenario buffers unless explicitly stated."
+        )
+
+        for sc in stress_cases:
+            with st.container():
+                st.markdown(f"###### {sc.name}")
+                st.caption(f"**Assumptions:** {sc.assumptions}")
+
+                s1, s2, s3, s4 = st.columns(4)
+                with s1:
+                    st.metric(
+                        label="Stressed Revenue",
+                        value=format_currency(sc.stressed_revenue, currency),
+                        delta=f"{format_currency(sc.stressed_revenue - sc.baseline_revenue, currency)}",
+                    )
+                with s2:
+                    st.metric(
+                        label="Stressed Cost",
+                        value=format_currency(sc.stressed_cost, currency),
+                        delta=f"{format_currency(sc.stressed_cost - sc.baseline_cost, currency)}",
+                        delta_color="inverse",
+                    )
+                with s3:
+                    st.metric(
+                        label="Stressed Profit",
+                        value=format_currency(sc.stressed_profit, currency),
+                        delta=f"{format_currency(sc.profit_impact, currency)}",
+                    )
+                with s4:
+                    base_m_str = format_percentage(sc.baseline_margin_pct)
+                    stress_m_str = format_percentage(sc.stressed_margin_pct)
+                    delta_pp_str = f"{sc.margin_impact_pp:+.2f} pp" if sc.margin_impact_pp is not None else "N/A"
+                    st.metric(
+                        label="Stressed Margin",
+                        value=stress_m_str,
+                        delta=delta_pp_str,
+                    )
+                st.caption(f"📝 *Transparency note:* {sc.double_counting_note}")
+                st.divider()
+
+    # TAB 4: Prioritized Mitigation Action Plan
+    with tab_mitigation:
+        st.markdown("##### Prioritized Commercial Mitigation Plan")
+        st.caption("Rule-based actionable next steps prioritized by risk severity and financial exposure.")
+
+        mit_plan = generate_mitigation_plan(all_risks)
+        if mit_plan:
+            plan_table = {
+                "Rank": [p.priority_rank for p in mit_plan],
+                "Risk ID": [p.risk_id for p in mit_plan],
+                "Category": [p.category for p in mit_plan],
+                "Suggested Role": [p.suggested_role for p in mit_plan],
+                "Recommended Mitigation Action": [p.action_text for p in mit_plan],
+                "Trigger Rationale": [p.trigger_rationale for p in mit_plan],
+            }
+            st.table(plan_table)
+        else:
+            st.info("No open or unmitigated risks identified.")
+
+    st.markdown("---")
+
+    # Section 5: CSV Export
+    st.markdown("##### 5. Export Commercial Risk & Readiness Audit (CSV)")
+    st.markdown("Download a complete governance package containing the risk register, readiness checklist, and stress-test results.")
+
+    csv_risk_content = export_risk_assessment_csv(
+        risks=all_risks,
+        checklist=checklist,
+        stress_cases=stress_cases,
+        currency=currency,
+    )
+
+    st.download_button(
+        label="📥 Download Commercial Risk & Readiness Audit (CSV)",
+        data=csv_risk_content,
+        file_name="dealwise_commercial_risk_audit.csv",
+        mime="text/csv",
+        help="Exports risk register, diligence checklist, and financial stress testing data.",
+    )
+
+
 def render_planned_section_view(section):
     """Render planned module placeholder with architecture and requirements blueprint."""
     st.subheader(f"{section.icon} {section.label}")
@@ -1266,35 +1592,12 @@ def render_planned_section_view(section):
     )
 
     st.info(f"**Module Objective**: {section.summary}")
-
     st.markdown("#### Planned Architectural Components")
 
-    if section.key == "risk_review":
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown(
-                """
-                **Risk Drivers to Model**:
-                - Scope volatility and unplanned rework cycles
-                - Ramp-up staffing lag and onboarding friction
-                - Client dependency and data access delays
-                - Senior SME bandwidth constraints
-                """
-            )
-        with col2:
-            st.markdown(
-                """
-                **Governance Metrics (Roadmap)**:
-                - Recommended contingency buffer ($ and % of fee)
-                - Break-even delivery duration threshold
-                - Margin at Risk (MaR) calculation
-                """
-            )
-
-    elif section.key == "proposal_reports":
+    if section.key == "proposal_reports":
         st.markdown(
             """
-            **Deliverables Planned for Phase 5**:
+            **Deliverables Planned for Phase 5 / Future Releases**:
             - **Executive Briefing Sheet**: One-page commercial summary designed for practice leader sign-off.
             - **Client Fee Schedule**: Transparent, professional pricing schedule suitable for proposal appendices.
             - **Governance Audit Log**: Version-controlled snapshot of pricing assumptions, approvals, and margin targets.
@@ -1317,9 +1620,12 @@ def main():
         render_commercial_analysis_page()
     elif selected_section.key == "scenario_simulator":
         render_scenario_simulator_page()
+    elif selected_section.key == "risk_review":
+        render_risk_review_page()
     else:
         render_planned_section_view(selected_section)
 
 
 if __name__ == "__main__":
     main()
+

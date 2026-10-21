@@ -14,7 +14,7 @@ class NavSection(NamedTuple):
 
 APP_TITLE = "DealWise"
 APP_SUBTITLE = "Consulting Proposal & Commercial Intelligence Platform"
-APP_VERSION = "0.4.0 (Phase 1, 2, 3 & 4)"
+APP_VERSION = "0.5.0 (Phase 1-5 Complete)"
 TARGET_ROLE = "Data & Analytics Value Design Practice"
 
 DISCLAIMER_TEXT = (
@@ -52,15 +52,15 @@ PAGES: List[NavSection] = [
         key="risk_review",
         label="Risk Review",
         icon="🛡️",
-        phase=2,
-        is_active=False,
-        summary="Scope contingency stress testing, margin slippage buffers, and delivery vulnerability assessment.",
+        phase=5,
+        is_active=True,
+        summary="Commercial risk intelligence register, readiness governance checklist, deterministic financial exposure stress testing, and mitigation planning.",
     ),
     NavSection(
         key="proposal_reports",
         label="Proposal Reports",
         icon="📄",
-        phase=3,
+        phase=5,
         is_active=False,
         summary="Executive proposal summaries, commercial governance audit packs, and client-ready value artifacts.",
     ),
