@@ -16,16 +16,16 @@ Consulting proposals frequently experience margin slippage and commercial vulner
 
 ---
 
-## 🚀 Current Capabilities (Phase 1 & Phase 2)
+## 🚀 Current Capabilities (Phases 1, 2 & 3)
 
 ### Phase 1: Foundation & Enterprise UI Shell
 - **Enterprise Application Shell**: Modular Streamlit application with custom corporate styling, clear visual hierarchy, and responsive layout.
-- **Consulting Navigation Lifecycle**: Structured navigation reflecting 5 deal-shaping phases:
-  1. *Overview & Architecture* (Operational)
-  2. *Commercial Analysis* (Operational with Phase 2 Engine)
-  3. *Scenario Simulator* (Phase 2 Roadmap)
-  4. *Risk Review* (Phase 2 Roadmap)
-  5. *Proposal Reports* (Phase 3 Roadmap)
+- **Consulting Navigation Lifecycle**: Structured navigation reflecting deal-shaping phases:
+  1. *Overview & Dashboard* (Operational)
+  2. *Commercial Analysis* (Operational)
+  3. *Scenario Simulator* (Roadmap)
+  4. *Risk Review* (Roadmap)
+  5. *Proposal Reports* (Roadmap)
 - **Data Governance & Transparency**: Built-in demonstration disclaimer confirming synthetic data policy with zero proprietary client data.
 
 ### Phase 2: Commercial Calculation Engine
@@ -39,7 +39,17 @@ Consulting proposals frequently experience margin slippage and commercial vulner
   - Commercial Health Advisories: Explicit alerts for negative margins (losses) and target-margin deficits.
   - Cost Component Breakdown table and Plotly bar visualizations.
   - Closed-form break-even revenue and target-margin required quoting calculator.
-- **Automated Test Coverage**: 37 automated unit tests validating normal deals, loss-making scenarios, discounts, delivery-cost overruns, contingency, margin vs. markup distinction, target-margin pricing, edge cases, input validation, and reproducibility.
+
+### Phase 3: Executive Analytics Dashboard
+- **Executive Overview Dashboard (`app.py` & `src/dashboard.py`)**:
+  - **Synchronized Session State**: Real-time two-way synchronization between the Executive Overview and Commercial Analysis pages. Modifications made on either view update the entire platform instantaneously without duplicating financial calculations.
+  - **Executive KPI Cards**: Real-time display of Net Realized Revenue, Estimated Total Cost, Operating Profit/Loss (with accessible badges and text labels), Profit Margin, Practice Target Margin, and Break-Even Revenue (annotated with surplus/deficit).
+  - **Commercial Health Assessment**: Objective, non-complacent advisory narrative explaining profit/loss standing, target-margin alignment, break-even distance, and explicit plain-language distinctions between profit margin and markup.
+  - **Interactive Plotly Visualizations**:
+    1. *Revenue vs. Delivery Cost & Operating Profit*: Compares net revenue and total cost with explicit profit/loss coloring and break-even reference line.
+    2. *Cost Composition Breakdown*: Horizontal bar chart detailing base delivery, scenario labor overrun, software/cloud tooling, other expenses, and contingency buffer—strictly reconciled to the engine's total cost.
+    3. *Profitability & Margin Benchmark*: Multi-rate benchmark comparing projected profit margin against practice target margin and markup on cost.
+- **Comprehensive Automated Test Suite**: 45 passing unit tests covering platform metadata, navigation schemas, commercial math, edge cases, health interpretation, cost reconciliation, and Plotly figure generation.
 
 ---
 
@@ -167,7 +177,7 @@ Run the test suite using `pytest`:
 pytest -v
 ```
 
-All 37 unit tests will execute, verifying:
+All 45 unit tests will execute, verifying:
 - Application configuration, metadata, and disclaimer compliance.
 - Normal and loss-making deal calculations.
 - Discount, contingency, and cost-overrun effects.
@@ -177,6 +187,8 @@ All 37 unit tests will execute, verifying:
 - Input validation (rejection of negative costs, non-finite floats, out-of-range percentages).
 - Boundary conditions (0% discount, 100% discount, 0% target margin).
 - Currency and percentage formatting (USD and INR).
+- Executive dashboard KPI calculations and cost composition reconciliation.
+- Plotly chart datasets and loss/zero-state rendering.
 
 ---
 
@@ -188,14 +200,15 @@ All 37 unit tests will execute, verifying:
   - Independent Decimal calculation engine (`src/commercial_engine.py`).
   - Interactive Commercial Analysis page in Streamlit with dual-currency display (USD/INR).
   - Closed-form break-even and target-margin required quoting solver.
-  - Comprehensive 37-test automated verification suite.
-- [ ] **Phase 2 Roadmap: Scenario Simulator & Risk Review** (Planned)
+- [x] **Phase 3: Executive Analytics Dashboard** (Complete)
+  - Synchronized session state across Overview and Commercial Analysis.
+  - Executive KPI cards with accessible health indicators and profit/loss labels.
+  - Commercial Health diagnostic panel with margin vs markup analysis.
+  - Interactive Plotly visualizations for revenue/cost comparison, reconciled cost composition, and margin benchmarks.
+- [ ] **Phase 4: Contract Scenario Simulator & Governance Reporting** (Upcoming)
   - Contract structure comparison (Time & Materials vs. Capped T&M vs. Fixed Fee vs. Value-Linked).
-  - Scope contingency risk buffers and Margin-at-Risk (MaR) sensitivity surfaces.
-- [ ] **Phase 3: Executive Governance & Reporting** (Planned)
-  - Partner commercial briefing sheet generator.
-  - Client-ready proposal fee schedules.
-  - Commercial audit log exports.
+  - Margin-at-Risk (MaR) sensitivity surfaces.
+  - Partner commercial briefing sheet and client fee schedule exports.
 
 ---
 

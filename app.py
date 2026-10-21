@@ -1,6 +1,6 @@
 """DealWise - Consulting Proposal & Commercial Intelligence Platform.
 
-Phase 1 & Phase 2: Project Foundation, Enterprise Architecture & Commercial Engine.
+Phases 1, 2 & 3: Project Foundation, Commercial Calculation Engine & Executive Analytics Dashboard.
 """
 
 from decimal import Decimal
@@ -22,6 +22,13 @@ from src.commercial_engine import (
     calculate_commercials,
     format_currency,
     format_percentage,
+)
+from src.dashboard import (
+    assess_commercial_health,
+    build_revenue_vs_cost_chart,
+    build_cost_composition_chart,
+    build_profitability_benchmark_chart,
+    get_cost_composition,
 )
 
 # Page configuration
@@ -47,32 +54,32 @@ st.markdown(
     .dw-header-card {
         background: linear-gradient(135deg, #0F2D59 0%, #1A467C 100%);
         color: #FFFFFF;
-        padding: 24px 28px;
+        padding: 22px 26px;
         border-radius: 10px;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
         box-shadow: 0 4px 12px rgba(15, 45, 89, 0.08);
     }
     .dw-header-card h1 {
         color: #FFFFFF !important;
         margin: 0;
-        font-size: 1.9rem;
+        font-size: 1.85rem;
         font-weight: 700;
         letter-spacing: -0.5px;
     }
     .dw-header-card p {
         color: #CBD5E1 !important;
-        margin: 6px 0 0 0;
-        font-size: 1.0rem;
+        margin: 5px 0 0 0;
+        font-size: 0.95rem;
     }
     
     /* Disclaimer banner */
     .dw-disclaimer-box {
         background-color: #EFF6FF;
         border-left: 4px solid #2563EB;
-        padding: 12px 18px;
+        padding: 10px 16px;
         border-radius: 0 8px 8px 0;
-        margin-bottom: 24px;
-        font-size: 0.88rem;
+        margin-bottom: 20px;
+        font-size: 0.85rem;
         color: #1E40AF;
         line-height: 1.45;
     }
@@ -82,12 +89,12 @@ st.markdown(
         background-color: #FFFFFF;
         border: 1px solid #E2E8F0;
         border-radius: 8px;
-        padding: 18px;
-        margin-bottom: 16px;
+        padding: 16px;
+        margin-bottom: 14px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
     .dw-card-title {
-        font-size: 0.88rem;
+        font-size: 0.82rem;
         font-weight: 600;
         color: #475569;
         text-transform: uppercase;
@@ -95,7 +102,7 @@ st.markdown(
         margin-bottom: 6px;
     }
     .dw-card-value {
-        font-size: 1.7rem;
+        font-size: 1.65rem;
         font-weight: 700;
         color: #0F172A;
         letter-spacing: -0.5px;
@@ -106,14 +113,8 @@ st.markdown(
     .dw-card-value-negative {
         color: #DC2626 !important;
     }
-    .dw-card-value-placeholder {
-        font-size: 1.7rem;
-        font-weight: 700;
-        color: #94A3B8;
-        letter-spacing: -0.5px;
-    }
     .dw-card-subtext {
-        font-size: 0.82rem;
+        font-size: 0.80rem;
         color: #64748B;
         margin-top: 4px;
     }
@@ -122,6 +123,24 @@ st.markdown(
     .dw-badge-active {
         background-color: #DCFCE7;
         color: #166534;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 12px;
+        display: inline-block;
+    }
+    .dw-badge-danger {
+        background-color: #FEE2E2;
+        color: #991B1B;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 12px;
+        display: inline-block;
+    }
+    .dw-badge-warning {
+        background-color: #FEF3C7;
+        color: #92400E;
         font-size: 0.75rem;
         font-weight: 600;
         padding: 2px 8px;
@@ -138,6 +157,16 @@ st.markdown(
         display: inline-block;
     }
     
+    /* Health narrative card */
+    .dw-health-card {
+        background-color: #FFFFFF;
+        border: 1px solid #CBD5E1;
+        border-radius: 8px;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        line-height: 1.55;
+    }
+
     /* Clean sidebar aesthetic */
     section[data-testid="stSidebar"] {
         background-color: #FFFFFF;
@@ -147,6 +176,46 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+# Synchronized session state defaults
+DEFAULT_DEAL_PARAMS = {
+    "base_quoted_price": 100000.0,
+    "delivery_costs": 50000.0,
+    "software_costs": 6000.0,
+    "other_expenses": 4000.0,
+    "contingency_pct": 10.0,
+    "discount_pct": 5.0,
+    "cost_overrun_pct": 0.0,
+    "target_margin_pct": 25.0,
+    "currency_selection": "USD ($)",
+}
+
+
+def init_session_state():
+    """Initialize shared commercial parameters across Overview and Analysis pages."""
+    for key, val in DEFAULT_DEAL_PARAMS.items():
+        if key not in st.session_state:
+            st.session_state[key] = val
+
+
+def get_active_inputs() -> CommercialInputs:
+    """Build CommercialInputs from current session state."""
+    return CommercialInputs.from_percentages(
+        base_quoted_price=st.session_state["base_quoted_price"],
+        delivery_costs=st.session_state["delivery_costs"],
+        software_tooling_costs=st.session_state["software_costs"],
+        other_expenses=st.session_state["other_expenses"],
+        contingency_pct=st.session_state["contingency_pct"],
+        discount_pct=st.session_state["discount_pct"],
+        cost_overrun_pct=st.session_state["cost_overrun_pct"],
+        target_margin_pct=st.session_state["target_margin_pct"],
+    )
+
+
+def get_active_currency() -> str:
+    """Return active currency code (USD or INR)."""
+    sel = st.session_state.get("currency_selection", "USD ($)")
+    return "INR" if "INR" in sel else "USD"
 
 
 def render_sidebar():
@@ -181,13 +250,25 @@ def render_sidebar():
 
         st.divider()
 
+        st.caption("ACTIVE DEAL CONTROLS")
+        curr_options = ["USD ($)", "INR (₹)"]
+        curr_index = curr_options.index(st.session_state.get("currency_selection", "USD ($)"))
+        st.session_state["currency_selection"] = st.selectbox(
+            "Display Currency",
+            options=curr_options,
+            index=curr_index,
+            help="Modifies display formatting only. Financial calculations remain currency-neutral.",
+        )
+
+        st.divider()
+
         st.caption("ENVIRONMENT & GOVERNANCE")
         st.markdown(
             f"""
             <div style="font-size: 0.82rem; color: #475569; line-height: 1.6;">
                 <div><strong>Build:</strong> <code>{APP_VERSION}</code></div>
-                <div><strong>Engine:</strong> Phase 2 Active</div>
-                <div><strong>Precision:</strong> Python Decimal (Exact)</div>
+                <div><strong>Dashboard:</strong> Phase 3 Active</div>
+                <div><strong>Engine:</strong> Python Decimal (Exact)</div>
                 <div><strong>Data Mode:</strong> Synthetic Only</div>
             </div>
             """,
@@ -199,7 +280,7 @@ def render_sidebar():
         st.markdown(
             """
             <div style="font-size: 0.78rem; color: #64748B; line-height: 1.45;">
-                Engineered to demonstrate practical commercial architecture, pricing governance, and margin sensitivity modeling for advisory engagements.
+                Engineered to demonstrate practical commercial architecture, pricing governance, and executive analytics for advisory engagements.
             </div>
             """,
             unsafe_allow_html=True,
@@ -214,7 +295,7 @@ def render_header(section):
         f"""
         <div class="dw-header-card">
             <h1>{APP_TITLE} — {APP_SUBTITLE}</h1>
-            <p>Commercial Structuring • Deal Governance • Value-Based Proposal Analytics</p>
+            <p>Commercial Structuring • Deal Governance • Executive Proposal Analytics</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -230,145 +311,184 @@ def render_header(section):
     )
 
 
-def render_empty_state_chart():
-    """Render a structural placeholder chart illustrating the planned Phase 2 waterfall model."""
-    categories = [
-        "Contract Value (Gross)",
-        "Direct Delivery Costs",
-        "Overhead Allocation",
-        "Risk Contingency Reserve",
-        "Target Gross Margin",
-    ]
-    values = [0, 0, 0, 0, 0]
-
-    fig = go.Figure()
-    fig.add_trace(
-        go.Bar(
-            x=categories,
-            y=values,
-            marker_color="#94A3B8",
-            text=["Awaiting Scoping", "Awaiting Scoping", "Awaiting Scoping", "Awaiting Scoping", "Awaiting Scoping"],
-            textposition="auto",
-        )
-    )
-
-    fig.update_layout(
-        title={
-            "text": "Deal Commercial Waterfall Framework",
-            "font": {"size": 14, "color": "#1E293B"},
-        },
-        height=280,
-        margin=dict(l=20, r=20, t=40, b=20),
-        plot_bgcolor="#FFFFFF",
-        paper_bgcolor="#FFFFFF",
-        yaxis=dict(
-            title="Commercial Value ($ USD)",
-            range=[0, 100],
-            showgrid=True,
-            gridcolor="#F1F5F9",
-            zerolinecolor="#CBD5E1",
-        ),
-        xaxis=dict(
-            tickfont=dict(size=11, color="#475569"),
-            showgrid=False,
-        ),
-    )
-    return fig
-
-
 def render_overview_page():
-    """Render Phase 1 Overview & Architecture Dashboard."""
-    st.subheader("Executive Overview & Commercial Value Design")
+    """Render Phase 3 Executive Analytics Dashboard powered by the live commercial engine."""
+    st.subheader("📊 Executive Commercial Dashboard")
     st.markdown(
         """
-        Consulting deals frequently suffer margin erosion from disjointed delivery scoping, 
-        opaque staffing pyramids, and unquantified commercial risk. **DealWise** bridges 
-        the gap between technical scoping and advisory deal-making by bringing quantitative rigor 
-        to proposal economics.
+        High-level commercial intelligence briefing synthesized directly from the active calculation engine. 
+        Evaluates engagement profitability, cost structure, break-even thresholds, and margin realization.
         """
     )
 
-    # Empty-state KPI banner
-    st.markdown("#### Commercial Proposal Baseline (Overview Snapshot)")
-    col1, col2, col3, col4 = st.columns(4)
+    currency = get_active_currency()
 
-    with col1:
+    # Calculate current commercial results
+    try:
+        inputs = get_active_inputs()
+        res = calculate_commercials(inputs)
+        health = assess_commercial_health(res, inputs.target_margin_pct)
+        valid = True
+    except CommercialValidationError as exc:
+        st.error(f"⚠️ Calculation Error: {exc}. Please adjust values in the Commercial Analysis module.")
+        valid = False
+
+    if valid:
+        # Context bar showing active baseline
         st.markdown(
-            """
-            <div class="dw-card">
-                <div class="dw-card-title">Commercial Engine</div>
-                <div class="dw-card-value" style="color: #15803D;">Phase 2 Active</div>
-                <div class="dw-card-subtext"><span class="dw-badge-active">Operational</span> Switch to Commercial Analysis tab</div>
+            f"""
+            <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px 16px; margin-bottom: 16px; font-size: 0.84rem; color: #334155;">
+                <strong>Active Proposal Parameters:</strong> Quoted Base: <strong>{format_currency(inputs.base_quoted_price, currency)}</strong> | 
+                Client Discount: <strong>{format_percentage(inputs.discount_pct * Decimal('100'))}</strong> | 
+                Delivery Costs: <strong>{format_currency(inputs.delivery_costs, currency)}</strong> | 
+                Contingency: <strong>{format_percentage(inputs.contingency_pct * Decimal('100'))}</strong> | 
+                Target Margin: <strong>{format_percentage(inputs.target_margin_pct * Decimal('100'))}</strong> | 
+                Currency: <strong>{currency}</strong>
+                <span style="color: #64748B; margin-left: 8px;">(Hypothetical Demonstration Values)</span>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-    with col2:
+        # Row 1 of Executive KPIs
+        k1, k2, k3 = st.columns(3)
+
+        with k1:
+            st.markdown(
+                f"""
+                <div class="dw-card">
+                    <div class="dw-card-title">Net Realized Revenue</div>
+                    <div class="dw-card-value">{format_currency(res.net_revenue, currency)}</div>
+                    <div class="dw-card-subtext">Base {format_currency(inputs.base_quoted_price, currency)} minus {format_percentage(inputs.discount_pct * Decimal('100'))} discount</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with k2:
+            st.markdown(
+                f"""
+                <div class="dw-card">
+                    <div class="dw-card-title">Estimated Total Cost</div>
+                    <div class="dw-card-value">{format_currency(res.scenario_total_cost, currency)}</div>
+                    <div class="dw-card-subtext">Direct ({format_currency(res.direct_estimated_cost, currency)}) + Contingency ({format_currency(res.contingency_amount, currency)})</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with k3:
+            profit_class = "dw-card-value-positive" if res.profit >= 0 else "dw-card-value-negative"
+            profit_badge = '<span class="dw-badge-active">Profitable</span>' if res.profit > 0 else (
+                '<span class="dw-badge-danger">Operating Loss</span>' if res.profit < 0 else '<span class="dw-badge-warning">Break-Even</span>'
+            )
+            profit_type_label = "Projected Operating Profit" if res.profit >= 0 else "Projected Operating Deficit"
+            st.markdown(
+                f"""
+                <div class="dw-card">
+                    <div class="dw-card-title">{profit_type_label}</div>
+                    <div class="dw-card-value {profit_class}">{format_currency(res.profit, currency)}</div>
+                    <div class="dw-card-subtext">{profit_badge} Net Revenue - Scenario Cost</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        # Row 2 of Executive KPIs
+        k4, k5, k6 = st.columns(3)
+
+        with k4:
+            margin_class = "dw-card-value-positive" if res.meets_target_margin else (
+                "dw-card-value-negative" if (res.profit_margin_pct or Decimal("0")) < 0 else ""
+            )
+            margin_badge = '<span class="dw-badge-active">Target Met</span>' if res.meets_target_margin else (
+                '<span class="dw-badge-warning">Below Target</span>' if res.is_profitable else '<span class="dw-badge-danger">Deficit</span>'
+            )
+            st.markdown(
+                f"""
+                <div class="dw-card">
+                    <div class="dw-card-title">Projected Profit Margin</div>
+                    <div class="dw-card-value {margin_class}">{format_percentage(res.profit_margin_pct)}</div>
+                    <div class="dw-card-subtext">{margin_badge} Share of Net Revenue retained as profit</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with k5:
+            st.markdown(
+                f"""
+                <div class="dw-card">
+                    <div class="dw-card-title">Target Practice Margin</div>
+                    <div class="dw-card-value">{format_percentage(inputs.target_margin_pct * Decimal('100'))}</div>
+                    <div class="dw-card-subtext">Practice governance benchmark threshold</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with k6:
+            be_surplus = health.break_even_difference
+            be_class = "dw-card-value-positive" if be_surplus >= 0 else "dw-card-value-negative"
+            be_text = f"+{format_currency(be_surplus, currency)} surplus" if be_surplus >= 0 else f"{format_currency(be_surplus, currency)} shortfall"
+            st.markdown(
+                f"""
+                <div class="dw-card">
+                    <div class="dw-card-title">Break-Even Revenue</div>
+                    <div class="dw-card-value">{format_currency(res.break_even_net_revenue, currency)}</div>
+                    <div class="dw-card-subtext <span class='{be_class}'><strong>{be_text}</strong> vs net revenue</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        # Commercial Health Assessment & Interpretation
+        st.markdown("#### Commercial Health & Executive Interpretation")
+        status_color = "#15803D" if health.meets_target_margin else ("#D97706" if health.is_profitable else "#DC2626")
         st.markdown(
-            """
-            <div class="dw-card">
-                <div class="dw-card-title">Precision Mode</div>
-                <div class="dw-card-value">Decimal</div>
-                <div class="dw-card-subtext"><span class="dw-badge-active">Active</span> Zero binary float rounding error</div>
+            f"""
+            <div class="dw-health-card" style="border-left: 5px solid {status_color};">
+                <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 8px;">
+                    <span style="font-weight: 700; font-size: 0.95rem; color: #1E293B;">EXECUTIVE ADVISORY BRIEF:</span>
+                    <span class="{'dw-badge-active' if health.is_profitable else 'dw-badge-danger'}">Status: {health.profitability_status}</span>
+                    <span class="{'dw-badge-active' if health.meets_target_margin else 'dw-badge-warning'}">Margin: {health.margin_target_status}</span>
+                </div>
+                <div style="font-size: 0.90rem; color: #334155; margin-bottom: 10px;">
+                    {health.executive_narrative}
+                </div>
+                <div style="font-size: 0.84rem; color: #64748B; border-top: 1px dashed #E2E8F0; padding-top: 8px;">
+                    <strong>Economics Diagnostic:</strong> {health.margin_vs_markup_summary}
+                </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-    with col3:
-        st.markdown(
-            """
-            <div class="dw-card">
-                <div class="dw-card-title">Currencies</div>
-                <div class="dw-card-value">USD / INR</div>
-                <div class="dw-card-subtext"><span class="dw-badge-active">Active</span> Dual display formatting supported</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        # Executive Visualizations (Plotly)
+        st.markdown("#### Commercial Structure & Benchmark Visualizations")
+        chart_col1, chart_col2 = st.columns(2)
 
-    with col4:
-        st.markdown(
-            """
-            <div class="dw-card">
-                <div class="dw-card-title">Verification</div>
-                <div class="dw-card-value" style="color: #15803D;">37 Tests</div>
-                <div class="dw-card-subtext"><span class="dw-badge-active">Passing</span> Automated pytest validation</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        with chart_col1:
+            fig_rev = build_revenue_vs_cost_chart(res, currency)
+            st.plotly_chart(fig_rev, use_container_width=True)
 
-    st.markdown("#### Commercial Modeling Blueprint")
-    chart_col, info_col = st.columns([3, 2])
+        with chart_col2:
+            fig_comp = build_cost_composition_chart(inputs, res, currency)
+            st.plotly_chart(fig_comp, use_container_width=True)
 
-    with chart_col:
-        fig = render_empty_state_chart()
-        st.plotly_chart(fig, use_container_width=True)
+        # Benchmark Chart
+        fig_bench = build_profitability_benchmark_chart(res, inputs.target_margin_pct)
+        st.plotly_chart(fig_bench, use_container_width=True)
+
         st.caption(
-            "Note: Switch to the **Commercial Analysis** module in the sidebar to interact with the live "
-            "Phase 2 calculation engine."
-        )
-
-    with info_col:
-        st.markdown(
-            """
-            <div class="dw-card" style="height: 100%;">
-                <div class="dw-card-title">Value Design Capabilities</div>
-                <ul style="font-size: 0.88rem; color: #334155; padding-left: 20px; line-height: 1.7;">
-                    <li><strong>Commercial Calculation Engine</strong>: Exact mathematical formulas for direct costs, contingency, scenario overruns, profit margin, and markup.</li>
-                    <li><strong>Break-Even & Target Pricing</strong>: Closed-form solutions for required net and quoted fees given a practice margin target.</li>
-                    <li><strong>Margin Buffer Calibration</strong>: Stress-test delivery overruns before commercial sign-off.</li>
-                    <li><strong>Proposal Governance</strong>: Generate consistent, auditable commercial briefings for engagement partners.</li>
-                </ul>
-            </div>
-            """,
-            unsafe_allow_html=True,
+            "Visualizations are generated directly from the underlying Decimal commercial engine. "
+            "To model alternate fee structures, discounts, or delivery cost stress-tests, switch to the "
+            "**Commercial Analysis** module in the sidebar."
         )
 
     st.divider()
 
+    # Value Design Pipeline Architecture (from Phase 1)
     st.markdown("#### 4-Stage Advisory Deal Lifecycle")
     p1, p2, p3, p4 = st.columns(4)
 
@@ -376,9 +496,9 @@ def render_overview_page():
         st.markdown(
             """
             <div class="dw-card">
-                <div style="font-size: 1.1rem; font-weight: 700; color: #0F2D59;">1. Resource Scoping</div>
-                <div style="font-size: 0.82rem; color: #64748B; margin-top: 6px;">
-                    Define project duration, workstreams, and team pyramid ratios using standardized rate cards.
+                <div style="font-size: 1.05rem; font-weight: 700; color: #0F2D59;">1. Resource Scoping</div>
+                <div style="font-size: 0.80rem; color: #64748B; margin-top: 4px;">
+                    Define project duration, workstreams, and team pyramid ratios.
                 </div>
             </div>
             """,
@@ -389,9 +509,9 @@ def render_overview_page():
         st.markdown(
             """
             <div class="dw-card">
-                <div style="font-size: 1.1rem; font-weight: 700; color: #0F2D59;">2. Commercial Structuring</div>
-                <div style="font-size: 0.82rem; color: #64748B; margin-top: 6px;">
-                    Compute direct cost baselines, standard rate realization, and gross contribution margin.
+                <div style="font-size: 1.05rem; font-weight: 700; color: #0F2D59;">2. Commercial Structuring</div>
+                <div style="font-size: 0.80rem; color: #64748B; margin-top: 4px;">
+                    Compute direct cost baselines, standard rate realization, and margin.
                 </div>
             </div>
             """,
@@ -402,9 +522,9 @@ def render_overview_page():
         st.markdown(
             """
             <div class="dw-card">
-                <div style="font-size: 1.1rem; font-weight: 700; color: #0F2D59;">3. Risk & Stress Testing</div>
-                <div style="font-size: 0.82rem; color: #64748B; margin-top: 6px;">
-                    Simulate scope creep, team re-staffing delays, and milestone slippage impacts on profitability.
+                <div style="font-size: 1.05rem; font-weight: 700; color: #0F2D59;">3. Risk & Stress Testing</div>
+                <div style="font-size: 0.80rem; color: #64748B; margin-top: 4px;">
+                    Simulate scope creep, restaffing delays, and milestone slippage.
                 </div>
             </div>
             """,
@@ -415,99 +535,14 @@ def render_overview_page():
         st.markdown(
             """
             <div class="dw-card">
-                <div style="font-size: 1.1rem; font-weight: 700; color: #0F2D59;">4. Governance & Audit</div>
-                <div style="font-size: 0.82rem; color: #64748B; margin-top: 6px;">
-                    Export client-facing fee summaries and internal partner commercial approval artifacts.
+                <div style="font-size: 1.05rem; font-weight: 700; color: #0F2D59;">4. Governance & Audit</div>
+                <div style="font-size: 0.80rem; color: #64748B; margin-top: 4px;">
+                    Export partner commercial briefings and client fee schedules.
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
-
-    st.markdown("---")
-    st.markdown("#### Platform Readiness Verification")
-    st.success(
-        "✅ **Phase 2 Commercial Engine Operational**: Full financial formula suite active with input validation, "
-        "reproducible Decimal precision, multi-currency display, and automated test coverage."
-    )
-
-
-def render_commercial_waterfall(result: CommercialResult, currency: str):
-    """Render interactive Plotly commercial waterfall for the engagement."""
-    categories = [
-        "Base Quoted Price",
-        "Client Discount",
-        "Net Revenue",
-        "Scenario Delivery Cost",
-        "Software & Cloud",
-        "Other Expenses",
-        "Contingency Reserve",
-        "Projected Profit",
-    ]
-
-    fig = go.Figure(
-        go.Waterfall(
-            name="Deal Waterfall",
-            orientation="v",
-            measure=[
-                "absolute",
-                "relative",
-                "total",
-                "relative",
-                "relative",
-                "relative",
-                "relative",
-                "total",
-            ],
-            x=categories,
-            textposition="outside",
-            text=[
-                format_currency(result.net_revenue + (result.baseline_total_cost * 0), currency), # handled clean
-                f"-{format_currency(result.net_revenue * 0, currency)}",
-                format_currency(result.net_revenue, currency),
-                f"-{format_currency(result.scenario_delivery_cost, currency)}",
-                f"-{format_currency(result.baseline_total_cost * 0, currency)}",
-                f"-{format_currency(result.baseline_total_cost * 0, currency)}",
-                f"-{format_currency(result.contingency_amount, currency)}",
-                format_currency(result.profit, currency),
-            ],
-            y=[
-                float(result.net_revenue), # simplified clear breakdown
-                -float(0),
-                float(result.net_revenue),
-                -float(result.scenario_delivery_cost),
-                -float(0),
-                -float(0),
-                -float(result.contingency_amount),
-                float(result.profit),
-            ],
-            connector={"line": {"color": "#CBD5E1"}},
-            decreasing={"marker": {"color": "#EF4444"}},
-            increasing={"marker": {"color": "#10B981"}},
-            totals={"marker": {"color": "#1E3A8A"}},
-        )
-    )
-
-    fig.update_layout(
-        title={
-            "text": "Commercial Value & Cost Structure",
-            "font": {"size": 14, "color": "#1E293B"},
-        },
-        height=320,
-        margin=dict(l=20, r=20, t=40, b=20),
-        plot_bgcolor="#FFFFFF",
-        paper_bgcolor="#FFFFFF",
-        yaxis=dict(
-            title=f"Amount ({currency})",
-            showgrid=True,
-            gridcolor="#F1F5F9",
-        ),
-        xaxis=dict(
-            tickfont=dict(size=11, color="#475569"),
-            showgrid=False,
-        ),
-    )
-    return fig
 
 
 def render_commercial_analysis_page():
@@ -520,56 +555,45 @@ def render_commercial_analysis_page():
         """
     )
 
-    # Top Controls Bar: Currency & Parameters Notice
-    col_curr, col_mode = st.columns([1, 3])
-    with col_curr:
-        currency_selection = st.selectbox(
-            "Display Currency",
-            options=["USD ($)", "INR (₹)"],
-            index=0,
-            help="Currency selection modifies display formatting only. Mathematical calculations remain currency-neutral.",
-        )
-        currency_code = "INR" if "INR" in currency_selection else "USD"
+    currency = get_active_currency()
 
-    with col_mode:
-        st.markdown(
-            """
-            <div style="background-color: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #475569; margin-top: 14px;">
-                <strong>Hypothetical Demonstration Baseline:</strong> Defaults represent a typical enterprise analytics engagement. 
-                Adjust any parameter to re-compute margins instantly.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    st.markdown("---")
+    # Notification banner
+    st.markdown(
+        f"""
+        <div style="background-color: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #475569; margin-bottom: 14px;">
+            <strong>Hypothetical Demonstration Baseline:</strong> Parameters are synchronized with the Executive Dashboard. 
+            Modifying any input updates both views immediately. Display Currency: <strong>{currency}</strong>.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     # Inputs Layout (2 columns: Commercial Pricing vs Delivery Costs)
     in_col1, in_col2 = st.columns(2)
 
     with in_col1:
         st.markdown("##### 1. Commercial Pricing & Terms")
-        base_quoted_price = st.number_input(
+        st.session_state["base_quoted_price"] = st.number_input(
             "Base Quoted Price",
             min_value=0.0,
             max_value=100000000.0,
-            value=100000.0,
+            value=float(st.session_state["base_quoted_price"]),
             step=5000.0,
             help="Catalog or gross proposed fee before client discount.",
         )
-        discount_pct = st.number_input(
+        st.session_state["discount_pct"] = st.number_input(
             "Client Discount (%)",
             min_value=0.0,
             max_value=100.0,
-            value=5.0,
+            value=float(st.session_state["discount_pct"]),
             step=0.5,
             help="Negotiated commercial concession or rate reduction percentage.",
         )
-        target_margin_pct = st.number_input(
+        st.session_state["target_margin_pct"] = st.number_input(
             "Target Profit Margin (%)",
             min_value=0.0,
             max_value=99.99,
-            value=25.0,
+            value=float(st.session_state["target_margin_pct"]),
             step=1.0,
             help="Practice-mandated profit margin threshold (must be strictly below 100%).",
         )
@@ -578,61 +602,52 @@ def render_commercial_analysis_page():
         st.markdown("##### 2. Delivery Costs & Scenarios")
         c_sub1, c_sub2 = st.columns(2)
         with c_sub1:
-            delivery_costs = st.number_input(
+            st.session_state["delivery_costs"] = st.number_input(
                 "Delivery Costs (Labour & Subs)",
                 min_value=0.0,
                 max_value=100000000.0,
-                value=50000.0,
+                value=float(st.session_state["delivery_costs"]),
                 step=2500.0,
                 help="Direct delivery personnel, consultants, and specialized subcontractors.",
             )
-            software_costs = st.number_input(
+            st.session_state["software_costs"] = st.number_input(
                 "Software & Cloud Tooling",
                 min_value=0.0,
                 max_value=10000000.0,
-                value=6000.0,
+                value=float(st.session_state["software_costs"]),
                 step=500.0,
                 help="Engagement-specific cloud computing, SaaS licensing, and sandbox environments.",
             )
         with c_sub2:
-            other_expenses = st.number_input(
+            st.session_state["other_expenses"] = st.number_input(
                 "Other Project Expenses",
                 min_value=0.0,
                 max_value=10000000.0,
-                value=4000.0,
+                value=float(st.session_state["other_expenses"]),
                 step=500.0,
                 help="Travel, per diems, legal, compliance, and client-site materials.",
             )
-            contingency_pct = st.number_input(
+            st.session_state["contingency_pct"] = st.number_input(
                 "Contingency Reserve (%)",
                 min_value=0.0,
                 max_value=100.0,
-                value=10.0,
+                value=float(st.session_state["contingency_pct"]),
                 step=1.0,
                 help="Buffer applied to direct estimated cost to absorb standard delivery variance.",
             )
 
-        cost_overrun_pct = st.number_input(
+        st.session_state["cost_overrun_pct"] = st.number_input(
             "Delivery-Cost Overrun (%) [Stress Test]",
             min_value=0.0,
             max_value=200.0,
-            value=0.0,
+            value=float(st.session_state["cost_overrun_pct"]),
             step=5.0,
             help="Simulates percentage increase in labor/subcontractor costs due to scope or timeline elongation.",
         )
 
     # Calculation execution with robust error handling
     try:
-        inputs = CommercialInputs.from_percentages(
-            base_quoted_price=base_quoted_price,
-            delivery_costs=delivery_costs,
-            software_tooling_costs=software_costs,
-            other_expenses=other_expenses,
-            contingency_pct=contingency_pct,
-            discount_pct=discount_pct,
-            cost_overrun_pct=cost_overrun_pct,
-            target_margin_pct=target_margin_pct,
-        )
+        inputs = get_active_inputs()
         res = calculate_commercials(inputs)
         valid = True
     except CommercialValidationError as exc:
@@ -646,22 +661,22 @@ def render_commercial_analysis_page():
         if res.profit < Decimal("0"):
             st.error(
                 f"🚨 **CRITICAL COMMERCIAL RISK — NET OPERATING LOSS**: "
-                f"The projected engagement results in a loss of **{format_currency(res.profit, currency_code)}** "
+                f"The projected engagement results in a loss of **{format_currency(res.profit, currency)}** "
                 f"(Profit Margin: {format_percentage(res.profit_margin_pct)}). "
-                f"Break-even net revenue is **{format_currency(res.break_even_net_revenue, currency_code)}**."
+                f"Break-even net revenue is **{format_currency(res.break_even_net_revenue, currency)}**."
             )
         elif not res.meets_target_margin:
             st.warning(
                 f"⚠️ **TARGET MARGIN DEFICIT**: "
-                f"Projected margin of **{format_percentage(res.profit_margin_pct)}** is below your practice target of **{format_percentage(target_margin_pct)}%** "
+                f"Projected margin of **{format_percentage(res.profit_margin_pct)}** is below your practice target of **{format_percentage(inputs.target_margin_pct * Decimal('100'))}%** "
                 f"(Deficit: {format_percentage(abs(res.margin_gap_pct) if res.margin_gap_pct is not None else 0)}). "
-                f"To achieve target margin, required net price is **{format_currency(res.required_net_price, currency_code)}** "
-                f"(or quote **{format_currency(res.required_quoted_price, currency_code)}** before discount)."
+                f"To achieve target margin, required net price is **{format_currency(res.required_net_price, currency)}** "
+                f"(or quote **{format_currency(res.required_quoted_price, currency)}** before discount)."
             )
         else:
             st.success(
                 f"✅ **COMMERCIAL THRESHOLD MET**: "
-                f"Projected margin of **{format_percentage(res.profit_margin_pct)}** satisfies the practice target of **{format_percentage(target_margin_pct)}%** "
+                f"Projected margin of **{format_percentage(res.profit_margin_pct)}** satisfies the practice target of **{format_percentage(inputs.target_margin_pct * Decimal('100'))}%** "
                 f"(Buffer: +{format_percentage(res.margin_gap_pct)})."
             )
 
@@ -674,8 +689,8 @@ def render_commercial_analysis_page():
                 f"""
                 <div class="dw-card">
                     <div class="dw-card-title">Net Revenue</div>
-                    <div class="dw-card-value">{format_currency(res.net_revenue, currency_code)}</div>
-                    <div class="dw-card-subtext">After {format_percentage(discount_pct)} discount</div>
+                    <div class="dw-card-value">{format_currency(res.net_revenue, currency)}</div>
+                    <div class="dw-card-subtext">After {format_percentage(inputs.discount_pct * Decimal('100'))} discount</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -686,7 +701,7 @@ def render_commercial_analysis_page():
                 f"""
                 <div class="dw-card">
                     <div class="dw-card-title">Scenario Total Cost</div>
-                    <div class="dw-card-value">{format_currency(res.scenario_total_cost, currency_code)}</div>
+                    <div class="dw-card-value">{format_currency(res.scenario_total_cost, currency)}</div>
                     <div class="dw-card-subtext">Direct + Contingency + Overrun</div>
                 </div>
                 """,
@@ -699,7 +714,7 @@ def render_commercial_analysis_page():
                 f"""
                 <div class="dw-card">
                     <div class="dw-card-title">Projected Profit</div>
-                    <div class="dw-card-value {profit_class}">{format_currency(res.profit, currency_code)}</div>
+                    <div class="dw-card-value {profit_class}">{format_currency(res.profit, currency)}</div>
                     <div class="dw-card-subtext">Net Revenue - Scenario Cost</div>
                 </div>
                 """,
@@ -713,7 +728,7 @@ def render_commercial_analysis_page():
                 <div class="dw-card">
                     <div class="dw-card-title">Profit Margin</div>
                     <div class="dw-card-value {margin_class}">{format_percentage(res.profit_margin_pct)}</div>
-                    <div class="dw-card-subtext">Target: {format_percentage(target_margin_pct)}%</div>
+                    <div class="dw-card-subtext">Target: {format_percentage(inputs.target_margin_pct * Decimal('100'))}%</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -739,7 +754,7 @@ def render_commercial_analysis_page():
                 f"""
                 <div class="dw-card">
                     <div class="dw-card-title">Break-Even Net Revenue</div>
-                    <div class="dw-card-value">{format_currency(res.break_even_net_revenue, currency_code)}</div>
+                    <div class="dw-card-value">{format_currency(res.break_even_net_revenue, currency)}</div>
                     <div class="dw-card-subtext">Zero-profit revenue threshold</div>
                 </div>
                 """,
@@ -751,8 +766,8 @@ def render_commercial_analysis_page():
                 f"""
                 <div class="dw-card">
                     <div class="dw-card-title">Target Net Price</div>
-                    <div class="dw-card-value">{format_currency(res.required_net_price, currency_code)}</div>
-                    <div class="dw-card-subtext">Net fee needed for {format_percentage(target_margin_pct)}% margin</div>
+                    <div class="dw-card-value">{format_currency(res.required_net_price, currency)}</div>
+                    <div class="dw-card-subtext">Net fee needed for {format_percentage(inputs.target_margin_pct * Decimal('100'))}% margin</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -763,8 +778,8 @@ def render_commercial_analysis_page():
                 f"""
                 <div class="dw-card">
                     <div class="dw-card-title">Target Quoted Price</div>
-                    <div class="dw-card-value">{format_currency(res.required_quoted_price, currency_code)}</div>
-                    <div class="dw-card-subtext">Quote before {format_percentage(discount_pct)} discount</div>
+                    <div class="dw-card-value">{format_currency(res.required_quoted_price, currency)}</div>
+                    <div class="dw-card-subtext">Quote before {format_percentage(inputs.discount_pct * Decimal('100'))} discount</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -775,7 +790,6 @@ def render_commercial_analysis_page():
         cost_col, summary_col = st.columns([3, 2])
 
         with cost_col:
-            # Breakdown table
             breakdown_data = {
                 "Cost Category": [
                     "Direct Delivery Labor & Subcontractors",
@@ -788,56 +802,31 @@ def render_commercial_analysis_page():
                     "Scenario Total Estimated Cost",
                 ],
                 "Basis / Formula": [
-                    f"Quoted labor allocation",
-                    f"Fixed engagement software/cloud",
-                    f"Expenses & travel",
-                    f"Delivery + Software + Expenses",
-                    f"{format_percentage(contingency_pct)} of Direct Estimated Cost",
-                    f"Direct Cost + Contingency",
-                    f"{format_percentage(cost_overrun_pct)} overrun on Delivery Costs",
-                    f"Scenario Delivery + Software + Expenses + Contingency",
+                    "Quoted labor allocation",
+                    "Fixed engagement software/cloud",
+                    "Expenses & travel",
+                    "Delivery + Software + Expenses",
+                    f"{format_percentage(inputs.contingency_pct * Decimal('100'))} of Direct Estimated Cost",
+                    "Direct Cost + Contingency",
+                    f"{format_percentage(inputs.cost_overrun_pct * Decimal('100'))} overrun on Delivery Costs",
+                    "Scenario Delivery + Software + Expenses + Contingency",
                 ],
-                f"Amount ({currency_code})": [
-                    format_currency(delivery_costs, currency_code),
-                    format_currency(software_costs, currency_code),
-                    format_currency(other_expenses, currency_code),
-                    format_currency(res.direct_estimated_cost, currency_code),
-                    format_currency(res.contingency_amount, currency_code),
-                    format_currency(res.baseline_total_cost, currency_code),
-                    format_currency(res.scenario_delivery_cost - Decimal(str(delivery_costs)), currency_code),
-                    format_currency(res.scenario_total_cost, currency_code),
+                f"Amount ({currency})": [
+                    format_currency(inputs.delivery_costs, currency),
+                    format_currency(inputs.software_tooling_costs, currency),
+                    format_currency(inputs.other_expenses, currency),
+                    format_currency(res.direct_estimated_cost, currency),
+                    format_currency(res.contingency_amount, currency),
+                    format_currency(res.baseline_total_cost, currency),
+                    format_currency(res.scenario_delivery_cost - inputs.delivery_costs, currency),
+                    format_currency(res.scenario_total_cost, currency),
                 ],
             }
             st.table(breakdown_data)
 
         with summary_col:
-            # Visual summary bar chart
-            cost_labels = ["Scenario Delivery", "Software & Cloud", "Other Expenses", "Contingency"]
-            cost_vals = [
-                float(res.scenario_delivery_cost),
-                float(software_costs),
-                float(other_expenses),
-                float(res.contingency_amount),
-            ]
-            fig_bar = go.Figure(
-                go.Bar(
-                    x=cost_labels,
-                    y=cost_vals,
-                    marker_color=["#1E3A8A", "#2563EB", "#60A5FA", "#F59E0B"],
-                    text=[format_currency(v, currency_code) for v in cost_vals],
-                    textposition="auto",
-                )
-            )
-            fig_bar.update_layout(
-                title={"text": "Cost Component Breakdown", "font": {"size": 13, "color": "#1E293B"}},
-                height=300,
-                margin=dict(l=10, r=10, t=35, b=10),
-                plot_bgcolor="#FFFFFF",
-                paper_bgcolor="#FFFFFF",
-                yaxis=dict(title=f"Amount ({currency_code})", showgrid=True, gridcolor="#F1F5F9"),
-                xaxis=dict(tickfont=dict(size=10, color="#475569")),
-            )
-            st.plotly_chart(fig_bar, use_container_width=True)
+            fig_comp = build_cost_composition_chart(inputs, res, currency)
+            st.plotly_chart(fig_comp, use_container_width=True)
 
         # Transparent Formula Reference
         with st.expander("📐 Transparent Financial Engineering Reference (Formulas & Definitions)", expanded=False):
@@ -896,7 +885,7 @@ def render_planned_section_view(section):
         with col2:
             st.markdown(
                 """
-                **Interactive Controls (Phase 2 Roadmap)**:
+                **Interactive Controls (Roadmap)**:
                 - Multi-deal comparison side-by-side matrices.
                 - Sensitivity surface displaying margin variance across simultaneous rate and volume variations.
                 """
@@ -917,7 +906,7 @@ def render_planned_section_view(section):
         with col2:
             st.markdown(
                 """
-                **Governance Metrics (Phase 2 Roadmap)**:
+                **Governance Metrics (Roadmap)**:
                 - Recommended contingency buffer ($ and % of fee)
                 - Break-even delivery duration threshold
                 - Margin at Risk (MaR) calculation
@@ -927,7 +916,7 @@ def render_planned_section_view(section):
     elif section.key == "proposal_reports":
         st.markdown(
             """
-            **Deliverables Planned for Phase 3**:
+            **Deliverables Planned for Phase 4**:
             - **Executive Briefing Sheet**: One-page commercial summary designed for practice leader sign-off.
             - **Client Fee Schedule**: Transparent, professional pricing schedule suitable for proposal appendices.
             - **Governance Audit Log**: Version-controlled snapshot of pricing assumptions, approvals, and margin targets.
@@ -940,6 +929,7 @@ def render_planned_section_view(section):
 
 
 def main():
+    init_session_state()
     selected_section = render_sidebar()
     render_header(selected_section)
 

@@ -14,7 +14,7 @@ class NavSection(NamedTuple):
 
 APP_TITLE = "DealWise"
 APP_SUBTITLE = "Consulting Proposal & Commercial Intelligence Platform"
-APP_VERSION = "0.2.0 (Phase 1 & 2)"
+APP_VERSION = "0.3.0 (Phase 1, 2 & 3)"
 TARGET_ROLE = "Data & Analytics Value Design Practice"
 
 DISCLAIMER_TEXT = (
@@ -26,11 +26,11 @@ DISCLAIMER_TEXT = (
 PAGES: List[NavSection] = [
     NavSection(
         key="overview",
-        label="Overview & Architecture",
+        label="Overview & Dashboard",
         icon="📊",
         phase=1,
         is_active=True,
-        summary="Platform orientation, value design principles, and commercial readiness baseline.",
+        summary="Executive analytics dashboard, real-time KPI synthesis, commercial health audit, and reconciled visualizations.",
     ),
     NavSection(
         key="commercial_analysis",
