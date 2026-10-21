@@ -1,5 +1,11 @@
 # DealWise — Consulting Proposal & Commercial Intelligence Platform
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://udaydomadiya08-dealwise-app-4sq2ju.streamlit.app/)
+[![GitHub Repo](https://img.shields.io/badge/GitHub-udaydomadiya08%2Fdealwise-blue?logo=github)](https://github.com/udaydomadiya08/dealwise)
+[![Tests Passing](https://img.shields.io/badge/tests-119%20passed-success.svg)](https://github.com/udaydomadiya08/dealwise)
+
+🌐 **Live Deployed Application**: **[https://udaydomadiya08-dealwise-app-4sq2ju.streamlit.app/](https://udaydomadiya08-dealwise-app-4sq2ju.streamlit.app/)**
+
 **DealWise** is an analytical application designed for advisory and technology consulting leaders (specifically within Data & Analytics Value Design practices). It bridges technical scoping with commercial structuring, pricing governance, and margin sensitivity modeling for enterprise consulting proposals.
 
 ---
@@ -350,10 +356,14 @@ All 119 unit and integration tests will execute, verifying:
 
 DealWise is architected to deploy directly to [Streamlit Community Cloud](https://streamlit.io/cloud) without requiring external databases, paid APIs, or local volume mounts:
 
+### Verified Live Production Instance
+The platform is deployed and publicly accessible at:
+👉 **[https://udaydomadiya08-dealwise-app-4sq2ju.streamlit.app/](https://udaydomadiya08-dealwise-app-4sq2ju.streamlit.app/)**
+
 ### Deployment Steps
-1. **Repository Setup**: Ensure the repository is hosted on GitHub.
-2. **Streamlit Cloud Dashboard**: Select **New app**, choose the repository and `main` branch.
-3. **App Entry Point**: Specify `app.py` as the main file path.
+1. **Repository Setup**: Hosted on GitHub at [`udaydomadiya08/dealwise`](https://github.com/udaydomadiya08/dealwise).
+2. **Streamlit Cloud Dashboard**: Connected to `main` branch.
+3. **App Entry Point**: Specifies `app.py` as the main file path.
 4. **Environment & Secrets**: No external environment variables or secrets are required (`secrets.toml` is not needed).
 5. **Configuration**: Streamlit Community Cloud automatically reads `.streamlit/config.toml` (which enforces `headless = true`, `enableXsrfProtection = true`, and sets the custom corporate theme).
 6. **In-Memory Operations**: Executive PDFs and CSVs are generated entirely in memory via Python `BytesIO` and `StringIO`, ensuring zero persistent disk writes on containerized infrastructure.

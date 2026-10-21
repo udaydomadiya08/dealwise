@@ -5,9 +5,9 @@ Phases 1-4: Project Foundation, Commercial Engine, Executive Dashboard & Scenari
 
 import html
 from decimal import Decimal
+from typing import List
 import pandas as pd
 import streamlit as st
-import plotly.graph_objects as go
 from src.config import (
     APP_TITLE,
     APP_SUBTITLE,
@@ -15,11 +15,9 @@ from src.config import (
     TARGET_ROLE,
     DISCLAIMER_TEXT,
     PAGES,
-    get_navigation_map,
 )
 from src.commercial_engine import (
     CommercialInputs,
-    CommercialResult,
     CommercialValidationError,
     calculate_commercials,
     format_currency,
@@ -31,11 +29,8 @@ from src.dashboard import (
     build_cost_composition_chart,
     build_profitability_benchmark_chart,
     build_sensitivity_heatmap,
-    get_cost_composition,
 )
 from src.scenario_engine import (
-    ScenarioComparison,
-    SensitivityCell,
     compare_scenarios,
     generate_sensitivity_grid,
     evaluate_fixed_fee_model,
@@ -47,8 +42,7 @@ from src.risk_engine import (
     RiskSeverity,
     ChecklistItem,
     ChecklistStatus,
-    calculate_risk_score,
-    get_risk_severity,
+    RiskValidationError,
     prioritize_risks,
     calculate_proposal_readiness,
     get_default_readiness_checklist,
@@ -68,7 +62,6 @@ from src.case_study import (
     OFFICIAL_INFOSYS_SOURCES,
     INFOSYS_CASE_STUDY_PRESET,
     CaseStudyPreset,
-    get_case_study_preset,
 )
 
 # Page configuration
@@ -430,6 +423,11 @@ def render_sidebar():
             """
             <div style="font-size: 0.78rem; color: #64748B; line-height: 1.45;">
                 Engineered to demonstrate practical commercial architecture, pricing governance, what-if sensitivity modeling, and executive analytics for advisory engagements.
+            </div>
+            <div style="margin-top: 10px;">
+                <a href="https://udaydomadiya08-dealwise-app-4sq2ju.streamlit.app/" target="_blank" style="font-size: 0.78rem; color: #2563EB; font-weight: 600; text-decoration: none;">
+                    🌐 Live Cloud Instance ↗
+                </a>
             </div>
             """,
             unsafe_allow_html=True,
@@ -1742,7 +1740,7 @@ def render_risk_review_page():
                     st.metric(
                         label="Stressed Margin",
                         value=stress_m_str,
-                        delta=delta_pp_str,
+                        delta=f"{delta_pp_str} (Base: {base_m_str})",
                     )
                 st.caption(f"📝 *Transparency note:* {sc.double_counting_note}")
                 st.divider()
